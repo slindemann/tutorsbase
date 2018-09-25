@@ -1,0 +1,37 @@
+{% extends 'student_crediting/base.html' %}
+
+{% block lecture %} {{ lecture }} {% endblock %}
+{% block logged_user %} {{ logged_user.first_name }} {{ logged_user.last_name }}{% endblock %}
+
+{% block content %}
+<h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
+
+  {% if rdata %}
+    <br>
+        <table class="w3-table-all w3-hoverable w3-card-4">
+    {% for rs in rdata %}
+            <tr>
+                <th>Sheet No{{ rs.sheet }} </th>
+                {% for re in rs.sheet_data %}
+                <th> Ex '{{re.exercise}}'</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td> </td>
+                {% for re in rs.sheet_data %}
+                  {% if re.credit_pk == None %}
+                    <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }} / [{{re.credits}}+{{re.bonus_credits}}] </a> </td>
+                  {% else %}
+                    <td> <a href="{{ re.credit_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }} / [{{re.credits}}+{{re.bonus_credits}}] </a> </td>
+                  {% endif %}
+                {% endfor %}
+            </tr>
+    {% endfor %}
+        </table>
+  {% else %}
+  <p> There are no results for this student in the system. <br> </p>
+  {% endif %}
+
+
+{% endblock %}
+
