@@ -39,8 +39,8 @@ class Exercise(models.Model):
     ## Or take that information from sheet_id?
     number = models.CharField(max_length=127, help_text="e.g., '2c'") # exercise number, e.g., '2c'
     sheet = models.ForeignKey(Sheet, on_delete=models.PROTECT)
-    credits = models.IntegerField(default=0, help_text='number of credits') # number of credits to be achieved (excluding bonus credits)
-    bonus_credits = models.IntegerField(default=0, help_text='number of bonus credits') # number of bonus credits
+    credits = models.DecimalField(default=0, max_digits=4, decimal_places=1, help_text='number of credits') # number of credits to be achieved (excluding bonus credits)
+    bonus_credits = models.DecimalField(default=0, max_digits=4, decimal_places=1, help_text='number of bonus credits') # number of bonus credits
 
     def __str__(self):
       return "Ex {} (Sheet {}): [{}+{}] Credits".format(self.number, self.sheet.number, self.credits, self.bonus_credits)
@@ -53,11 +53,28 @@ class Result(models.Model):
     ## this class holds the student's results for each individual exercise
     student = models.ForeignKey(Student, on_delete=models.PROTECT)
     exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT)
-    credits = models.IntegerField(default=None, blank=True, null=True) # number of credits achieved by student in this (sub-)exercise
-    bonus_credits = models.IntegerField(default=None, blank=True, null=True) # number of achieved bonus credits by student in this (sub-)exercise
+    credits = models.DecimalField(default=None, max_digits=4, decimal_places=1, blank=True, null=True) # number of credits achieved by student in this (sub-)exercise
+    bonus_credits = models.DecimalField(default=None, max_digits=4, decimal_places=1, blank=True, null=True) # number of achieved bonus credits by student in this (sub-)exercise
     edited_by = models.ForeignKey('auth.User', on_delete=models.PROTECT)
     last_modified = models.DateTimeField('date last modified')
-    blackboard = models.IntegerField(default=-1) # -1: not presented; 1-6: students perfomance (german grading scheme; 1(very good)-6(very bad)
+
+    GOOD = '+'
+    BAD = '-'
+    AVERAGE = 'o'
+    NONE = ''
+    BLACKBOARD_PERFORMANCE_CHOICES = (
+        (GOOD, '+'),
+        (AVERAGE, 'o'),
+        (BAD, '-'),
+			  (NONE, ''),
+    )
+    blackboard = models.CharField(
+        max_length=1,
+        choices=BLACKBOARD_PERFORMANCE_CHOICES,
+        default=NONE,
+				null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return "{} ; {} :  {}+{} credits".format(self.exercise, self.student, self.credits, self.bonus_credits)
@@ -66,14 +83,6 @@ class Result(models.Model):
       unique_together = ('student', 'exercise',)
 
     def save(self, *args, **kwargs):
-      #if not self.pk:
-      # This code only happens if the objects is
-      # not in the database yet. Otherwise it would
-      # have pk
-      #    pass
-      #else:
-      #    pass
-      # 
       self.last_modified = timezone.now()
       print ("Result.save: ", self.student, self.exercise, self.credits, self.bonus_credits, self.edited_by, self.last_modified, self.blackboard)
       super(Result, self).save(*args, **kwargs)

@@ -25,7 +25,7 @@ SECRET_KEY = '$+-pdchscf-_t2(*uo&fn7fvv3ivs_%pugtnj+wz63#72l!#zj'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','1.1.1.1']
+ALLOWED_HOSTS = ['127.0.0.1','0.0.0.0']
 
 
 # Application definition

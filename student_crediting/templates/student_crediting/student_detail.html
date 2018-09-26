@@ -13,16 +13,27 @@
             <tr>
                 <th>Sheet No{{ rs.sheet }} </th>
                 {% for re in rs.sheet_data %}
-                <th> Ex '{{re.exercise}}'</th>
+                <th> Ex '{{re.exercise}}' [{{re.credits}}+{{re.bonus_credits}}] </th>
                 {% endfor %}
             </tr>
             <tr>
-                <td> </td>
+                {% if rs.presence == None %}
+                    <td> <a href="presence/new/{{ rs.sheet }}" > nyd  </a></td>
+                {% else %}
+                    <td> <a href="presence/update/{{ rs.presence.id }}" > {{rs.presence.present}} </a></td>
+                {% endif %}
                 {% for re in rs.sheet_data %}
                   {% if re.credit_pk == None %}
-                    <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }} / [{{re.credits}}+{{re.bonus_credits}}] </a> </td>
+                    {% comment %}
+                    <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }} </a> </td>
+                    {% endcomment %}
+                    <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}"> nyd </a> </td>
                   {% else %}
-                    <td> <a href="{{ re.credit_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }} / [{{re.credits}}+{{re.bonus_credits}}] </a> </td>
+                    {% if re.blackboard_performance == None %}
+                      <td> <a href="{{ re.credit_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }}  </a> </td>
+                    {% else %}
+                      <td> <a href="{{ re.credit_pk }}"> {{ re.credits_achieved }}+{{ re.bonus_credits_achieved }} ({{re.blackboard_performance}}) </a> </td>
+                    {% endif %}
                   {% endif %}
                 {% endfor %}
             </tr>

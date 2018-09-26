@@ -7,24 +7,30 @@
   {% if student_list %}
       <table class="w3-table-all w3-hoverable w3-card-4">
         <tr>
-		  <th>pk</th>
+{#		  <th>pk</th>  #}
 		  <th>UniID</th>
           <th>Name</th>
           <th>Surname</th>
+          {% comment %}
           <th>Tutor</th>
           <th>ExGroup</th>
+          {% endcomment %}
+          <th>Tutor</th>
           <th>Credits</th>
           <th>Credits [%]</th>
 {#          <th>Event</th>  #}
         </tr>
       {% for student in student_list %}
         <tr>
-            <td><a href="student/{{ student.id }}/">{{ student.id }}</a></td>
+{#          <td><a href="student/{{ student.id }}/">{{ student.id }}</a></td>  #}
             <td><a href="student/{{ student.id }}/">{{ student.studentID }}</a></td>
             <td>{{ student.name }}</td>
             <td>{{ student.surname }}</td>
+            <td>{{ student.exgroup.tutor }} (G{{ student.exgroup.number}})</td>
+          {% comment %}
             <td>{{ student.exgroup.tutor }}</td>
             <td>{{ student.exgroup.number }}</td>
+          {% endcomment %}
             <td>{{ student.credits_sum }}+{{ student.bonus_credits_sum }}</td> 
             <td>{{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }} </td> 
         </tr>
