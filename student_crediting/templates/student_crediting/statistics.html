@@ -1,0 +1,42 @@
+{% extends 'student_crediting/base.html' %}
+
+{% block lecture %} {{ lecture }} {% endblock %}
+{% block logged_user %} {{ logged_user.first_name }} {{ logged_user.last_name }}{% endblock %}
+
+{% block content %}
+  <div class="w3-container w3-margin-left">
+    <h1>Here come's the stats part...</h1>
+    {% comment %} {% for credit in credits %}
+    <p><br>{{ credit.credits }}<br></p>
+    {% endfor %}{% endcomment  %} 
+    <p><br>{{ credit_values }}<br></p>
+  <div id="container"></div>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
+  <div id="container"></div>
+  <script>
+	var data = {{ credit_values.0.data }};
+	Highcharts.chart('container', {
+		title: {
+			text: 'Highcharts Histogram'
+		},
+		xAxis: {
+			title: { text: 'Histogram' },
+			alignTicks: false,
+		},
+		yAxis: {
+			title: { text: 'Histogram' },
+		},
+		series: [{
+			name: 'Histogram',
+			type: 'histogram',
+			baseSeries: 1,
+		}, {
+			data: data,
+			visible: false
+		}]
+	});
+  </script>
+  </div>
+{% endblock %}
+

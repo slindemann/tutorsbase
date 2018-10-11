@@ -10,4 +10,5 @@ urlpatterns = [
     url(r'^student/(?P<student_pk>[0-9]+)/credits/new/(?P<sheet_no>[0-9]+)/(?P<exercise_pk>[0-9]+)$', views.edit_credits, name='edit_credits'),
     url(r'^student/(?P<student_pk>[0-9]+)/presence/new/(?P<sheet_no>[0-9]+)$', views.give_presence, name='give_presence'),
     url(r'^student/([0-9]+)/presence/update/(?P<presence_pk>[0-9]+)$', views.edit_presence, name='edit_presence'),
+    url(r'^stats/$', views.show_stats, name='show_stats'),
     ]

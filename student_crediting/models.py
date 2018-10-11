@@ -2,6 +2,16 @@ from django.db import models
 from django.utils import timezone
 
 
+class Config(models.Model):
+  name = models.CharField(max_length=15, help_text="name of config parameter", unique=True)
+  state = models.IntegerField(help_text='state of config parameter')
+  description = models.CharField(max_length=127, help_text='description of config parameter and its states')
+
+  def __str__(self):
+    #return "(ID{}) {}: {} ({}) ".format(self.pk, self.name, self.state, self.description)
+    return "[ID{} {}: {} ({})] ".format(self.pk, self.name, self.state, self.description)
+
+
 class ExGroup(models.Model):
     ## this class holds the data to the exercise groups
     number = models.IntegerField(help_text="Exercise Group No", unique=True)
@@ -9,7 +19,8 @@ class ExGroup(models.Model):
     venue = models.CharField(default="", max_length=127, help_text="Venue time and place")
 
     def __str__(self):
-       return "({}) Exercise Group No{}, {} , {}".format(self.pk, self.number, self.tutor, self.venue)
+       #return "(ID{}) Exercise Group No{}, {} , {}".format(self.pk, self.number, self.tutor, self.venue)
+       return "[ID{} Exercise Group No{}, {} , {}]".format(self.pk, self.number, self.tutor, self.venue)
 
 
 
@@ -19,9 +30,11 @@ class Student(models.Model):
     surname = models.CharField(max_length=127)
     studentID = models.IntegerField(help_text="Student ID", default=None, unique=True)
     exgroup = models.ForeignKey(ExGroup, on_delete=models.PROTECT)
+    email = models.EmailField(default=None, blank=True, null=True )
 
     def __str__(self):
-        return "{} {} ({})".format(self.name, self.surname, self.studentID)
+        #return "(ID{}) {} {} ({})".format(self.pk, self.name, self.surname, self.studentID)
+        return "[ID{} {} {} ({})]".format(self.pk, self.name, self.surname, self.studentID)
 
 class Sheet(models.Model):
     ## this class holds the metadata to the exercise sheets
@@ -29,7 +42,8 @@ class Sheet(models.Model):
     deadline = models.DateTimeField(help_text="Due date of exercise")
 
     def __str__(self):
-        return "Exercise Sheet No{}".format(self.number)
+        return "[ID{} Exercise Sheet No{}]".format(self.pk, self.number)
+        #return "(ID{}) Exercise Sheet No{}".format(self.pk, self.number)
 
 
 class Exercise(models.Model):
@@ -43,7 +57,8 @@ class Exercise(models.Model):
     bonus_credits = models.DecimalField(default=0, max_digits=4, decimal_places=1, help_text='number of bonus credits') # number of bonus credits
 
     def __str__(self):
-      return "Ex {} (Sheet {}): [{}+{}] Credits".format(self.number, self.sheet.number, self.credits, self.bonus_credits)
+      return "[ID{} Ex {} (Sheet {}): [{}+{}] Credits]".format(self.pk, self.number, self.sheet.number, self.credits, self.bonus_credits)
+      #return "(ID{}) Ex {} (Sheet {}): [{}+{}] Credits".format(self.pk, self.number, self.sheet.number, self.credits, self.bonus_credits)
 
     class Meta:
       unique_together = ('number', 'sheet',)
@@ -77,7 +92,12 @@ class Result(models.Model):
     )
 
     def __str__(self):
-        return "{} ; {} :  {}+{} credits".format(self.exercise, self.student, self.credits, self.bonus_credits)
+      if self.blackboard:
+        #return "[ID{} {} ; {} :  {}+{} credits ({})".format(self.pk, self.exercise, self.student, self.credits, self.bonus_credits, self.blackboard)
+        return "[ID{} {} ; {} :  {}+{} credits ({})]".format(self.pk, self.exercise, self.student, self.credits, self.bonus_credits, self.blackboard)
+      else:
+        #return "(ID{}) {} ; {} :  {}+{} credits".format(self.pk, self.exercise, self.student, self.credits, self.bonus_credits)
+        return "[ID{} {} ; {} :  {}+{} credits]".format(self.pk, self.exercise, self.student, self.credits, self.bonus_credits)
     
     class Meta:
       unique_together = ('student', 'exercise',)
@@ -95,7 +115,7 @@ class Presence(models.Model):
     present = models.BooleanField(default=False)
 
     def __str__(self):
-        return "{} ; {} ; attendance={}".format(self.sheet, self.student, self.present)
+        return "(ID{}) {} ; {} ; attendance={}".format(self.pk, self.sheet, self.student, self.present)
 
     class Meta:
       unique_together = ('student', 'sheet',)

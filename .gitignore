@@ -6,3 +6,6 @@ db.sqlite3
 /static
 .DS_Store
 /student_crediting/migrations
+gunicorn_nginx_commands.txt
+tutorsbase.sock
+static

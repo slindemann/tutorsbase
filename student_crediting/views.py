@@ -4,7 +4,8 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
 
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
+from django.core.exceptions import PermissionDenied
 
 from django.contrib.auth.decorators import login_required
 
@@ -14,6 +15,9 @@ from django.utils import timezone
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence
 
 from django.db.models import Avg, Count, Min, Sum
+
+
+
 
 def logged_out(request):
   context = {}
@@ -35,7 +39,8 @@ def change_password(request):
             messages.success(request, 'Your password was successfully updated!')
             return redirect('change_password')
         else:
-            messages.error(request, 'Please correct the error below.')
+#            messages.error(request, 'Please correct the error below.')
+            pass
     else:
         form = PasswordChangeForm(request.user)
     return render(request, 'student_crediting/change_password.html', {
@@ -54,16 +59,20 @@ def give_credit(request, credit_pk=None):
   else:
     mvs=None
     instance=None
-#  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance)
   form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user)
   if form.is_valid():
-    sc = form.save(commit=False)
-    sc.edited_by = request.user
-    sc.last_modified = timezone.now()
-    sc.save()
-    return redirect('student_details', sc.student.id)
+    student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+      sc.edited_by = request.user
+      sc.last_modified = timezone.now()
+      sc.save()
+      return redirect('student_details', sc.student.id)
+    else:
+      raise PermissionDenied("Permission denied.")
   else:
-    messages.error(request, 'Please correct the error below.')
+    #messages.error(request, 'Please correct the error below.')
     context = {'form': form,
                'lecture': current_event,
                'logged_user': current_user,
@@ -97,7 +106,8 @@ def students(request):
 def student_details(request, student_pk):
   current_event = 'Experimental Physics I'
   current_user = request.user
-  student = get_object_or_404(Student, pk=student_pk)
+  #student = get_object_or_404(Student, pk=student_pk)
+  student = Student.objects.select_related('exgroup__tutor').get(pk=student_pk)
   #exercises = Exercise.objects.select_related('sheet')
   exercises = Exercise.objects.select_related('sheet')
   presence = Presence.objects.filter(student=student_pk)
@@ -201,17 +211,46 @@ def edit_presence(request, presence_pk=None):
     instance=None
   form = AssignPresenceForm(request.POST or None, instance=instance, user=request.user)
   if form.is_valid():
-    sc = form.save(commit=False)
-#    sc.edited_by = request.user
-#    sc.last_modified = timezone.now()
-    sc.save()
-    return redirect('student_details', sc.student.id)
+    student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+  #    sc.edited_by = request.user
+  #    sc.last_modified = timezone.now()
+      sc.save()
+      return redirect('student_details', sc.student.id)
+    else:
+      raise PermissionDenied("Permission denied.")
   else:
-    messages.error(request, 'Please correct the error below.')
+#    messages.error(request, 'Please correct the error below.')
     context = {'form': form,
                'lecture': current_event,
                'logged_user': current_user,
                }
     return render(request, 'student_crediting/assign_presence.html', context)
+
+
+@login_required
+def show_stats(request):
+  current_event = 'Experimental Physics I'
+  current_user = request.user
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied.")
+  else:
+    results = Result.objects.select_related('student__exgroup__tutor').all()
+    #credit_values = [float(fl) for fl in Result.objects.values_list('credits', flat=True)]
+    credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
+    #for tutor in ExGroup.objects.select_related('tutor').values_list('tutor', flat=True):
+    for egroup in ExGroup.objects.select_related('tutor').all():
+      credit_values.append({})
+      credit_values[-1]['tutor'] = egroup.tutor.last_name
+      credit_values[-1]['group'] = egroup.id
+      credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
+
+    context = {'lecture': current_event,
+               'logged_user': current_user,
+               'credit_values': credit_values,
+               }
+    return render(request, 'student_crediting/statistics.html', context)
 
 

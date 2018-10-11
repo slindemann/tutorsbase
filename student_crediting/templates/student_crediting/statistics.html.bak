@@ -1,0 +1,68 @@
+{% extends 'student_crediting/base.html' %}
+
+{% block lecture %} {{ lecture }} {% endblock %}
+{% block logged_user %} {{ logged_user.first_name }} {{ logged_user.last_name }}{% endblock %}
+
+{% block content %}
+  <div class="w3-container w3-margin-left">
+    <h1>Here come's the stats part...</h1>
+  <div id="container"></div>
+  <script src="https://code.highcharts.com/highcharts.src.js"></script>
+  <script>
+    Highcharts.chart('container', {
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: 'Historic World Population by Region'
+        },
+		credits: {
+			enabled: false
+		},
+        xAxis: {
+            categories: ['Africa', 'America', 'Asia', 'Europe', 'Oceania']
+        },
+        series: [{
+            name: 'Year 1800',
+            data: [107, 31, 635, 203, 2]
+        }, {
+            name: 'Year 1900',
+            data: [133, 156, 947, 408, 6]
+        }, {
+            name: 'Year 2012',
+            data: [1052, 954, 4250, 740, 38]
+        }]
+    });
+  </script>
+
+{% comment %}
+  <script src="https://code.highcharts.com/highcharts.src.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
+  <div id="container"></div>
+  <script>
+    Highcharts.chart('container', {
+        title: {
+            text: 'Credits (all)'
+        },
+		credits: {
+			enabled: false
+		},
+        xAxis: {
+            title: { text: 'Data' },
+            alignTicks: false
+        },
+        series: [{
+            type: histogram,
+            xAxis: 1,
+            yAxis: 1,
+            baseSeries: 1
+        }, {
+            data: [3.5, 3, 3.2, 3.1, 3.6, 3.9, 3.4]
+        }]
+    });
+  </script>
+{% endcomment %}
+  </div>
+{% endblock %}
+

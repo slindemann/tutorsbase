@@ -4,7 +4,11 @@
 {% block logged_user %} {{ logged_user.first_name }} {{ logged_user.last_name }}{% endblock %}
 
 {% block content %}
-<h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
+{% if logged_user.is_staff %}
+    <h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) -- G{{ student.exgroup.number }}({{ student.exgroup.tutor }}) </h2>
+{% else %}
+    <h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
+{% endif %}
 
   {% if rdata %}
     <br>

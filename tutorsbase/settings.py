@@ -25,7 +25,12 @@ SECRET_KEY = '$+-pdchscf-_t2(*uo&fn7fvv3ivs_%pugtnj+wz63#72l!#zj'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','0.0.0.0']
+ALLOWED_HOSTS = ['127.0.0.1','0.0.0.0','10.4.73.214']
+
+# SESSION SETTING
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 5 * 60
 
 
 # Application definition
