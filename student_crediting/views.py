@@ -9,7 +9,7 @@ from django.core.exceptions import PermissionDenied
 
 from django.contrib.auth.decorators import login_required
 
-from .forms import GiveCreditForm, AssignPresenceForm 
+from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm
 from django.utils import timezone
 
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence
@@ -228,6 +228,36 @@ def edit_presence(request, presence_pk=None):
                'logged_user': current_user,
                }
     return render(request, 'student_crediting/assign_presence.html', context)
+
+
+@login_required
+def edit_student_mail(request, student_pk=None):
+  if not student_pk:
+    raise PermissionDenied("Permission denied.")
+  current_event = 'Experimental Physics I'
+  current_user = request.user
+  instance = get_object_or_404(Student, pk=student_pk)
+  form = EditStudentForm(request.POST or None, instance=instance, user=request.user)
+  if form.is_valid():
+    student = Student.objects.select_related('exgroup__tutor').get(id=student_pk)
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+  #    sc.edited_by = request.user
+  #    sc.last_modified = timezone.now()
+      sc.save()
+      #return redirect('student_details', sc.student.id)
+      return redirect('student_details', student_pk)
+    else:
+      raise PermissionDenied("Permission denied.")
+  else:
+#    messages.error(request, 'Please correct the error below.')
+    context = {'form': form,
+               'lecture': current_event,
+               'logged_user': current_user,
+               }
+    return render(request, 'student_crediting/edit_student.html', context)
+
 
 
 @login_required

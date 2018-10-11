@@ -34,7 +34,7 @@ class Student(models.Model):
 
     def __str__(self):
         #return "(ID{}) {} {} ({})".format(self.pk, self.name, self.surname, self.studentID)
-        return "[ID{} {} {} ({})]".format(self.pk, self.name, self.surname, self.studentID)
+        return "[ID{} {} {} ({}; {})]".format(self.pk, self.name, self.surname, self.studentID, self.email)
 
 class Sheet(models.Model):
     ## this class holds the metadata to the exercise sheets

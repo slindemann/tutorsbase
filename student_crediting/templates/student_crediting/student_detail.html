@@ -9,7 +9,12 @@
 {% else %}
     <h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
 {% endif %}
-<p> {{ student.email }} </p>
+
+{% if student.email %}
+<p>EMail: <a href="mailto:{{ student.email }}">{{ student.email }}</a>    <a href="edit_mail">(edit)</a>  </p>
+{% else %}
+<p><a href="edit_mail">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
+{% endif %}
 
   {% if rdata %}
     <br>

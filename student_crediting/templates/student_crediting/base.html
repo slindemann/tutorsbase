@@ -33,7 +33,7 @@ style="display:none;z-index:2;width:40%;min-width:300px" id="mySidebar">
     w3-button">Give credits</a>
 {% endcomment %}
   <a href="{% url 'students' %}" onclick="w3_close()" class="w3-bar-item
-    w3-button">Students</a>
+    w3-button">My Students</a>
   {% if request.user.is_staff %}
     <a href="{% url 'show_stats' %}" onclick="w3_close()" class="w3-bar-item w3-button">Statistics</a>
   {% endif %}
