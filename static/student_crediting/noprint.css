@@ -1,0 +1,24 @@
+@media print
+{
+    body {transform: scale(.9);}
+    table {page-break-inside: avoid;}
+    
+    th, td {
+    padding: 3px;
+    text-align: left;
+}
+
+    #pager,
+    form,
+    .no-print
+    {
+        display: none !important;
+        height: 0;
+    }
+
+
+    .no-print, .no-print *{
+        display: none !important;
+        height: 0;
+    }
+}

@@ -3,9 +3,10 @@
 __pycache__
 tbaseenv
 db.sqlite3
-/static
+/static/admin/
 .DS_Store
 /student_crediting/migrations
 gunicorn_nginx_commands.txt
 tutorsbase.sock
-static
+/student_crediting/static/
+tutorsbase/settings.py

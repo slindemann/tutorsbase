@@ -1,0 +1,69 @@
+.mybtn {
+  float : left;
+  background-color: #4CAF50; /* Green */
+  border: none;
+  color: white;
+  padding: 6px 15px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+
+.btn_plus {
+  float : left;
+}
+
+
+.btn_add {
+  float : left;
+  background-color: white;
+  color: green;
+  border: 2px solid #4CAF50;
+  }
+
+.btn_add:hover {
+  color: gray;
+  border: 2px solid gray;
+}
+
+.btn_newbasket {
+  float : right;
+  background-color: white; 
+  color: red; 
+  border: 2px solid red;
+}
+
+.btn_newbasket:hover {
+  color: gray; 
+  border: 2px solid gray;
+}
+
+
+
+.btn_payed {
+  float : right;
+  background-color: white; 
+  color: green; 
+  border: 2px solid #4CAF50;
+}
+
+.btn_payed:hover {
+  color: gray; 
+  border: 2px solid gray;
+}
+
+.btn_vendors {
+  float : right;
+  background-color: white; 
+  color: gray; 
+  border: 2px solid gray;
+}
+
+.btn_vendors:hover {
+  color: green; 
+  border: 2px solid #4CAF50;
+
+}
