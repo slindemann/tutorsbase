@@ -7,10 +7,17 @@ class GiveCreditForm(forms.ModelForm):
   def __init__(self, *args, **kwargs):
     max_values = kwargs.pop('max_values', None)
     user = kwargs.pop('user', None)
+    config = kwargs.pop('config', None)
     super(GiveCreditForm, self).__init__(*args, **kwargs)
     if max_values:
       self.fields['credits'] = forms.DecimalField(min_value=0, max_value=max_values['credits'])
-      self.fields['bonus_credits'] = forms.DecimalField(min_value=0, max_value=max_values['bonus_credits'])
+      self.fields['credits'].help_text = 'max. {} credits'.format(max_values['credits'])
+      if not config['bonus_credits']:
+        ## if we do not want to use bonus_credits, hide this input 
+        self.fields['bonus_credits'].widget = forms.HiddenInput()
+      else:
+        self.fields['bonus_credits'] = forms.DecimalField(min_value=0, max_value=max_values['bonus_credits'])
+        self.fields['bonus_credits'].help_text = 'max. {} bonus_credits'.format(max_values['bonus_credits'])
     if 'instance' in kwargs and kwargs['instance']:
       ## in this case we have selected a student and an exercise before, so fix both:
       _students = Student.objects.filter(id=kwargs['instance'].student.id)
@@ -24,6 +31,7 @@ class GiveCreditForm(forms.ModelForm):
         _students = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=user)
         self.fields['student'].queryset = _students
         self.fields['student'].initial = _students
+
 
   class Meta:
     model = Result

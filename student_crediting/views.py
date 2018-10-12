@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm
 from django.utils import timezone
 
-from .models import Student, Exercise, ExGroup, Sheet, Result, Presence
+from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
 
 from django.db.models import Avg, Count, Min, Sum
 
@@ -51,6 +51,10 @@ def change_password(request):
 def give_credit(request, credit_pk=None):
   current_event = 'Experimental Physics I'
   current_user = request.user
+  _conf = Config.objects.all()
+  _config = {}
+  for _c in _conf:
+    _config[_c.name] = _c.state
   if credit_pk:
     instance = get_object_or_404(Result, pk=credit_pk)
     ex_credits = instance.exercise.credits
@@ -59,7 +63,7 @@ def give_credit(request, credit_pk=None):
   else:
     mvs=None
     instance=None
-  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user)
+  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
   if form.is_valid():
     student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
     if student.exgroup.tutor == request.user or request.user.is_staff:
@@ -76,6 +80,7 @@ def give_credit(request, credit_pk=None):
     context = {'form': form,
                'lecture': current_event,
                'logged_user': current_user,
+               'config': _config,
                }
     return render(request, 'student_crediting/give_credits.html', context)
 
@@ -94,10 +99,14 @@ def students(request):
                                           credits_sum_perc=100*Sum('result__credits')/sum_credits['total_credits'],
                                           bonus_credits_sum_perc=100*Sum('result__bonus_credits')/sum_credits['total_bonus_credits'],
                                           )
-  #print (student_list)
+  _conf = Config.objects.all()
+  _config = {}
+  for _c in _conf:
+    _config[_c.name] = _c.state
   context = {'lecture': current_event,
              'logged_user': current_user,
              'student_list': student_list.order_by('name'),
+             'config': _config,
              }
   return render(request, 'student_crediting/students.html', context)
 
@@ -106,26 +115,16 @@ def students(request):
 def student_details(request, student_pk):
   current_event = 'Experimental Physics I'
   current_user = request.user
-  #student = get_object_or_404(Student, pk=student_pk)
   student = Student.objects.select_related('exgroup__tutor').get(pk=student_pk)
-  #exercises = Exercise.objects.select_related('sheet')
   exercises = Exercise.objects.select_related('sheet')
   presence = Presence.objects.filter(student=student_pk)
-  #Player.objects.filter(name="Bob").prefetch_related(
-  #      'position__positionstats_set', 'playerstats_set')
   sheets_meta = {}
   ## step 1: fill sheet and exercises information to dict 'sheets_meta'
   for iex, ex in enumerate(exercises):
     if not ex.sheet.number in sheets_meta:
       sheets_meta[ex.sheet.number] = {}
-      #sheets_meta[ex.sheet.number]['presence'] = 'true'
-      #_ispres = presence.filter(sheet=ex.sheet.number).values_list('present', flat=True)
       _ispres = presence.filter(sheet=ex.sheet.number)
-      #_ispres = presence.filter(sheet=ex.sheet.number).get('present')
-      #print ('presence: ', presence, ', ispres: ', _ispres)
-      #print ('ispres: ', _ispres[0])
       if _ispres:
-        #sheets_meta[ex.sheet.number]['presence'] = _ispres[0]
         sheets_meta[ex.sheet.number]['presence'] = _ispres[0]
       else:
         sheets_meta[ex.sheet.number]['presence'] = None
@@ -155,19 +154,23 @@ def student_details(request, student_pk):
     rdata[-1]['presence'] = sheets_meta[snumber]['presence']
     rdata[-1]['sheet_data'] = []
     for exnumber in sheets_meta[snumber]:
-      #print ('exnumber: ', exnumber)
       if exnumber == 'presence':
         continue
-      #print ('exnumber: ', exnumber)
       rdata[-1]['sheet_data'].append({})
       rdata[-1]['sheet_data'][-1]['exercise'] = exnumber
       for md in sheets_meta[snumber][exnumber]:
         rdata[-1]['sheet_data'][-1][md] = sheets_meta[snumber][exnumber][md]
 
+  _conf = Config.objects.all()
+  _config = {}
+  for _c in _conf:
+    _config[_c.name] = _c.state
+
   context = {'lecture': current_event,
              'logged_user': current_user,
              'student': student,
              'rdata': rdata,
+             'config': _config,
              }
   return render(request, 'student_crediting/student_detail.html', context)
 
@@ -243,15 +246,11 @@ def edit_student_mail(request, student_pk=None):
     if student.exgroup.tutor == request.user or request.user.is_staff:
       # only staff and assigned tutor(s) are allowed to edit
       sc = form.save(commit=False)
-  #    sc.edited_by = request.user
-  #    sc.last_modified = timezone.now()
       sc.save()
-      #return redirect('student_details', sc.student.id)
       return redirect('student_details', student_pk)
     else:
       raise PermissionDenied("Permission denied.")
   else:
-#    messages.error(request, 'Please correct the error below.')
     context = {'form': form,
                'lecture': current_event,
                'logged_user': current_user,
@@ -268,9 +267,7 @@ def show_stats(request):
     raise PermissionDenied("Permission denied.")
   else:
     results = Result.objects.select_related('student__exgroup__tutor').all()
-    #credit_values = [float(fl) for fl in Result.objects.values_list('credits', flat=True)]
     credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
-    #for tutor in ExGroup.objects.select_related('tutor').values_list('tutor', flat=True):
     for egroup in ExGroup.objects.select_related('tutor').all():
       credit_values.append({})
       credit_values[-1]['tutor'] = egroup.tutor.last_name
