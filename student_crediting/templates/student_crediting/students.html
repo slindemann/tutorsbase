@@ -1,8 +1,5 @@
 {% extends 'student_crediting/base.html' %}
 
-{% block lecture %} {{ lecture }} {% endblock %}
-{% block logged_user %} {{ logged_user.first_name }} {{ logged_user.last_name }}{% endblock %}
-
 {% block content %}
   {% if student_list %}
       <table class="w3-table-all w3-hoverable w3-card-4">

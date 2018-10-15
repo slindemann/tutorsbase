@@ -1,15 +1,12 @@
 {% extends 'student_crediting/base.html' %}
 
-{% block lecture %} {{ lecture }} {% endblock %}
-{% block logged_user %} {{ logged_user.first_name }} {{ logged_user.last_name }}{% endblock %}
-
 {% block content %}
   <div class="w3-container w3-margin-left">
     <h1>Here come's the stats part...</h1>
     {% comment %} {% for credit in credits %}
     <p><br>{{ credit.credits }}<br></p>
-    {% endfor %}{% endcomment  %} 
-    <p><br>{{ credit_values }}<br></p>
+    {% endfor %} 
+    <p><br>{{ credit_values }}<br></p>{% endcomment  %}
   <div id="container"></div>
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>

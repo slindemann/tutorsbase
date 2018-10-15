@@ -15,12 +15,16 @@ from django.utils import timezone
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
 
 from django.db.models import Avg, Count, Min, Sum
+import numpy as np
 
 CURRENT_EVENT = 'Experimental Physics I'
 
 
 def logged_out(request):
-  context = {}
+  context = {'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'config': config_read(),
+             }
   return render(request, 'registration/my_logged_out.html', context)
 
 
@@ -280,12 +284,17 @@ def show_stats(request):
       credit_values.append({})
       credit_values[-1]['tutor'] = egroup.tutor.last_name
       credit_values[-1]['group'] = egroup.id
-      credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
+      for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
+        print (fl)
+      try:
+        credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
+      except:
+        pass
 
-    context = {#'form': form,
-               'lecture': CURRENT_EVENT,
+    context = {'lecture': CURRENT_EVENT,
                'logged_user': request.user,
                'config': config_read(),
+               'credit_values': credit_values,
                }
     return render(request, 'student_crediting/statistics.html', context)
 
