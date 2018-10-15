@@ -32,6 +32,18 @@ ALLOWED_HOSTS = ['127.0.0.1','0.0.0.0','10.4.73.214','192.168.178.45']
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 #SESSION_COOKIE_AGE = 5 * 60
 
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # For production
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # During development only
+#EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+#EMAIL_FILE_PATH = '/home/sebastian/Computing/tutorsbase_ex1/tmp'
+# Python has a little SMTP server built-in. You can start it in a second console with this command:
+# python -m smtpd -n -c DebuggingServer localhost:1025
+# This will simply print all the mails sent to localhost:1025 in the console.
+# You have to configure Django to use this server in your settings.py:
+# EMAIL_HOST = 'localhost'
+# EMAIL_PORT = 1025
+
+
 
 # Application definition
 

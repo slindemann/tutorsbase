@@ -16,7 +16,7 @@ from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
 
 from django.db.models import Avg, Count, Min, Sum
 
-
+CURRENT_EVENT = 'Experimental Physics I'
 
 
 def logged_out(request):
@@ -37,24 +37,32 @@ def change_password(request):
             user = form.save()
             update_session_auth_hash(request, user)  # Important!
             messages.success(request, 'Your password was successfully updated!')
-            return redirect('change_password')
+            return redirect('students')
         else:
 #            messages.error(request, 'Please correct the error below.')
             pass
     else:
         form = PasswordChangeForm(request.user)
-    return render(request, 'student_crediting/change_password.html', {
-        'form': form
-    })
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+    return render(request, 'student_crediting/change_password.html', context)
 
-@login_required
-def give_credit(request, credit_pk=None):
-  current_event = 'Experimental Physics I'
-  current_user = request.user
+
+def config_read():
   _conf = Config.objects.all()
   _config = {}
   for _c in _conf:
     _config[_c.name] = _c.state
+  return _config
+
+
+@login_required
+def give_credit(request, credit_pk=None):
+#  current_event = 'Experimental Physics I'
+  _config = config_read()
   if credit_pk:
     instance = get_object_or_404(Result, pk=credit_pk)
     ex_credits = instance.exercise.credits
@@ -77,18 +85,19 @@ def give_credit(request, credit_pk=None):
       raise PermissionDenied("Permission denied.")
   else:
     #messages.error(request, 'Please correct the error below.')
+
     context = {'form': form,
-               'lecture': current_event,
-               'logged_user': current_user,
-               'config': _config,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
                }
     return render(request, 'student_crediting/give_credits.html', context)
 
 
 @login_required
 def students(request):
-  current_event = 'Experimental Physics I'
-  current_user = request.user
+#  current_event = 'Experimental Physics I'
+#  current_user = request.user
   sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
     student_list = Student.objects.all()
@@ -99,22 +108,20 @@ def students(request):
                                           credits_sum_perc=100*Sum('result__credits')/sum_credits['total_credits'],
                                           bonus_credits_sum_perc=100*Sum('result__bonus_credits')/sum_credits['total_bonus_credits'],
                                           )
-  _conf = Config.objects.all()
-  _config = {}
-  for _c in _conf:
-    _config[_c.name] = _c.state
-  context = {'lecture': current_event,
-             'logged_user': current_user,
-             'student_list': student_list.order_by('name'),
-             'config': _config,
+  context = {#'form': form,
+             'student_list': student_list,
+             'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'config': config_read(),
              }
+
   return render(request, 'student_crediting/students.html', context)
 
 
 @login_required
 def student_details(request, student_pk):
-  current_event = 'Experimental Physics I'
-  current_user = request.user
+#  current_event = 'Experimental Physics I'
+#  current_user = request.user
   student = Student.objects.select_related('exgroup__tutor').get(pk=student_pk)
   exercises = Exercise.objects.select_related('sheet')
   presence = Presence.objects.filter(student=student_pk)
@@ -161,16 +168,12 @@ def student_details(request, student_pk):
       for md in sheets_meta[snumber][exnumber]:
         rdata[-1]['sheet_data'][-1][md] = sheets_meta[snumber][exnumber][md]
 
-  _conf = Config.objects.all()
-  _config = {}
-  for _c in _conf:
-    _config[_c.name] = _c.state
-
-  context = {'lecture': current_event,
-             'logged_user': current_user,
+  context = {#'form': form,
              'student': student,
              'rdata': rdata,
-             'config': _config,
+             'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'config': config_read(),
              }
   return render(request, 'student_crediting/student_detail.html', context)
 
@@ -202,8 +205,8 @@ def give_presence(request, student_pk, sheet_no):
 
 @login_required
 def edit_presence(request, presence_pk=None):
-  current_event = 'Experimental Physics I'
-  current_user = request.user
+#  current_event = 'Experimental Physics I'
+#  current_user = request.user
   if presence_pk:
     instance = get_object_or_404(Presence, pk=presence_pk)
 #    ex_credits = instance.exercise.credits
@@ -226,10 +229,13 @@ def edit_presence(request, presence_pk=None):
       raise PermissionDenied("Permission denied.")
   else:
 #    messages.error(request, 'Please correct the error below.')
+
     context = {'form': form,
-               'lecture': current_event,
-               'logged_user': current_user,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
                }
+
     return render(request, 'student_crediting/assign_presence.html', context)
 
 
@@ -237,8 +243,8 @@ def edit_presence(request, presence_pk=None):
 def edit_student_mail(request, student_pk=None):
   if not student_pk:
     raise PermissionDenied("Permission denied.")
-  current_event = 'Experimental Physics I'
-  current_user = request.user
+#  current_event = 'Experimental Physics I'
+#  current_user = request.user
   instance = get_object_or_404(Student, pk=student_pk)
   form = EditStudentForm(request.POST or None, instance=instance, user=request.user)
   if form.is_valid():
@@ -252,17 +258,19 @@ def edit_student_mail(request, student_pk=None):
       raise PermissionDenied("Permission denied.")
   else:
     context = {'form': form,
-               'lecture': current_event,
-               'logged_user': current_user,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
                }
+
     return render(request, 'student_crediting/edit_student.html', context)
 
 
 
 @login_required
 def show_stats(request):
-  current_event = 'Experimental Physics I'
-  current_user = request.user
+#  current_event = 'Experimental Physics I'
+#  current_user = request.user
   if not request.user.is_staff:
     raise PermissionDenied("Permission denied.")
   else:
@@ -274,9 +282,10 @@ def show_stats(request):
       credit_values[-1]['group'] = egroup.id
       credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
 
-    context = {'lecture': current_event,
-               'logged_user': current_user,
-               'credit_values': credit_values,
+    context = {#'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
                }
     return render(request, 'student_crediting/statistics.html', context)
 

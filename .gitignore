@@ -11,3 +11,5 @@ gunicorn_nginx_commands.txt
 tutorsbase.sock
 /student_crediting/static/
 tutorsbase/settings.py
+gunicorn.access
+gunicorn.log
