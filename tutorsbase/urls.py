@@ -16,31 +16,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.conf.urls import url, include
-from student_crediting import views
-from django.contrib.auth import views as auth_views
+#from student_crediting import views
+#from django.contrib.auth import views as auth_views
 
 from student_crediting import views as student_crediting_views
 
-
-#extra_context = {'lecture': 'Experimental Physics I', 'logged_user': 'not logged in' }
-#extra_context = {'logged_user': 'Experimental Physics I', }
-extra_context = {'lecture': 'Experimental Physics I', }
-
 urlpatterns = [
-    url(r'^$', student_crediting_views.redirect_index, name='index'),
-    url(r'^admin/', admin.site.urls),
-    url(r'^login/$', auth_views.login, {'extra_context': extra_context}, name='login'),
-    url(r'^logout/$', auth_views.logout, {'template_name': 'registration/my_logged_out.html', 'extra_context': extra_context} , name='logout'),
-#    url(r'^logout/$', auth_views.logout, {'next_page': '/logged_out'} , name='logout'),
-#    url(r'^logged_out/$', student_crediting_views.logged_out, {'extra_context': extra_context}, name='logged_out'),
-    url(r'^logged_out/$', student_crediting_views.logged_out, name='logged_out'),
-    url(r'^password_change/$', views.change_password, name='change_password'),
-    url(r'^student_crediting/', include('student_crediting.urls')),
-    url(r'^password_reset/$', auth_views.password_reset, {'template_name': 'registration/password_reset_myform.html', 'email_template_name':'registration/password_reset_myemail.html', 'subject_template_name':'registration/password_reset_mysubject.txt', 'extra_context': extra_context}, name='password_reset'),
-    url(r'^password_reset/done/$', auth_views.password_reset_done, {'template_name': 'registration/password_reset_mydone.html', 'extra_context': extra_context}, name='password_reset_done'),
-    url(r'^reset/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$',
-        auth_views.password_reset_confirm, {'template_name': 'registration/password_reset_myconfirm.html', 'extra_context': extra_context}, name='password_reset_confirm'),
-    url(r'^reset/done/$', auth_views.password_reset_complete, {'template_name': 'registration/password_reset_mycomplete.html', 'extra_context': extra_context}, name='password_reset_complete'),
-
-
+    url(r'^tutorsbase/$', student_crediting_views.redirect_index, name='index'),
+    url(r'^tutorsbase/student_crediting/', include('student_crediting.urls')),
 ]

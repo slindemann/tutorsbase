@@ -30,7 +30,9 @@ def logged_out(request):
 
 @login_required
 def redirect_index(request):
-  return HttpResponseRedirect('student_crediting')
+#  return HttpResponseRedirect('student_crediting')
+#  return HttpResponseRedirect('students')
+  return redirect('students')
 
 
 @login_required
