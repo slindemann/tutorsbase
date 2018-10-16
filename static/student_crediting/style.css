@@ -1,6 +1,55 @@
+.nyd {
+/*  float: left; */
+/*  background-color: white;  */
+  color: gray;
+}
+
+.nyd:hover {
+/*  float: left; */
+/*  background-color: green; */
+  color: gray;
+  font-weight: bold;
+}
+
+
+.done {
+    color: green;
+    font-weight: bold;
+}
+
+.done:hover {
+    color: gray;
+    font-weight: bold;
+}
+
+.absent {
+    color: red;
+    font-weight: bold;
+}
+
+.absent:hover { color: gray }
+
+.present {
+    color: green;
+    font-weight: bold;
+}
+
+.present:hover { color: gray }
+
+.mylink {
+    color: black;
+    font-weight: bold;
+    text-align:right;
+}
+
+.mylink:hover {
+    color: gray;
+}
+
+/*
 .mybtn {
   float : left;
-  background-color: #4CAF50; /* Green */
+  background-color: #4CAF50; 
   border: none;
   color: white;
   padding: 6px 15px;
@@ -67,3 +116,4 @@
   border: 2px solid #4CAF50;
 
 }
+*/

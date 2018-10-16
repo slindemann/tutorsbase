@@ -4,7 +4,7 @@
   {% if student_list %}
       <table class="w3-table-all w3-hoverable w3-card-4">
         <tr>
-		  <th>UniID</th>
+		  <th>RZ ID</th>
           <th>Name</th>
           <th>Surname</th>
           {% if request.user.is_staff %}<th>Tutor</th>{% endif %}
@@ -13,7 +13,7 @@
         </tr>
       {% for student in student_list %}
         <tr>
-            <td><a href="student/{{ student.id }}/">{{ student.studentID }}</a></td>
+            <td><a href="student/{{ student.id }}/" class="mylink">{{ student.studentID }}</a></td>
             <td>{{ student.name }}</td>
             <td>{{ student.surname }}</td>
             {% if request.user.is_staff %}<td>{{ student.exgroup.tutor }} (G{{ student.exgroup.number}})</td>{% endif %}
@@ -21,8 +21,8 @@
             <td>{{ student.credits_sum }}+{{ student.bonus_credits_sum }}</td> 
             <td>{{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }} </td> 
           {% else %}
-            <td>{{ student.credits_sum }}</td> 
-            <td>{{ student.credits_sum_perc|stringformat:".1f" }}</td> 
+            <td>{{ student.credits_sum|floatformat:-1 }}</td> 
+            <td>{{ student.credits_sum_perc|floatformat:-1 }}</td> 
           {% endif %}
         </tr>
       {% endfor %}

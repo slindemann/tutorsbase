@@ -28,7 +28,8 @@ class Student(models.Model):
     ## this class is supposed to hold the metadata to the individual students
     name = models.CharField(max_length=127)
     surname = models.CharField(max_length=127)
-    studentID = models.IntegerField(help_text="Student ID", default=None, unique=True)
+    #studentID = models.IntegerField(help_text="Student ID", default=None, unique=True)
+    studentID = models.CharField(help_text="Student's RZ ID", max_length=8, default=None, unique=True)
     exgroup = models.ForeignKey(ExGroup, on_delete=models.PROTECT)
     email = models.EmailField(default=None, blank=True, null=True )
 
