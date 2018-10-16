@@ -8,9 +8,9 @@
 {% endif %}
 
 {% if student.email %}
-<p>EMail: <a href="mailto:{{ student.email }}">{{ student.email }}</a>    <a href="edit_mail">(edit)</a>  </p>
+<p>EMail: <a href="mailto:{{ student.email }}">{{ student.email }}</a>    <a href="edit_mail" class="mylink">(edit)</a>  </p>
 {% else %}
-<p><a href="edit_mail">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
+<p><a href="edit_mail" class="absent">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
 {% endif %}
 
   {% if rdata %}
@@ -25,20 +25,24 @@
             </tr>
             <tr>
                 {% if rs.presence == None %}
-                    <td> <a href="presence/new/{{ rs.sheet }}" > nyd  </a></td>
+                    <td> <a href="presence/new/{{ rs.sheet }}" class="nyd"> nyd  </a></td>
                 {% else %}
-                    <td> <a href="presence/update/{{ rs.presence.id }}" > {{rs.presence.present}} </a></td>
+           {% comment %}      <td> <a href="presence/update/{{ rs.presence.id }}">{% if rs.presence.present %} &#10004; {% else %} &#10008; {% endif %}</a></td> {% endcomment %}
+                <td> <a href="presence/update/{{ rs.presence.id }}"{% if rs.presence.present %} class="present"> &#10004; {% else %} class="absent"> &#10008; {% endif %}</a></td>
                 {% endif %}
                 {% for re in rs.sheet_data %}
                   {% if re.credit_pk == None %}
-                    <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}"> nyd </a> </td>
+                    <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}" class="nyd"> nyd </a> </td>
                   {% else %}
-                    <td> <a href="{{ re.credit_pk }}"> {{ re.credits_achieved }}{% if config.bonus_credits %}+{{ re.bonus_credits_achieved }}{% endif %}{% if re.blackboard_performance %} ({{re.blackboard_performance}}) {% endif %}</a> </td>
+                  <td> <a href="{{ re.credit_pk }}" class="done"> {{ re.credits_achieved|floatformat:-1 }}{% if config.bonus_credits %}+{{ re.bonus_credits_achieved|floatformat:-1 }}{% endif %}{% if re.blackboard_performance %} (<b>{{re.blackboard_performance}}</b>) {% endif %}</a> </td>
                   {% endif %}
                 {% endfor %}
             </tr>
     {% endfor %}
         </table>
+          <p>
+              <div class="w3-right w3-padding"> <a href="{% url 'students' %}" class="mylink">back to 'My Students'</a> </div>
+          </p>
   {% else %}
   <p> There are no results for this student in the system. <br> </p>
   {% endif %}
