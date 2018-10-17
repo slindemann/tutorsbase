@@ -22,6 +22,8 @@ from django.conf.urls import url, include
 from student_crediting import views as student_crediting_views
 
 urlpatterns = [
-    url(r'^tutorsbase/$', student_crediting_views.redirect_index, name='index'),
-    url(r'^tutorsbase/student_crediting/', include('student_crediting.urls')),
+#    url(r'^tutorsbase/$', student_crediting_views.redirect_index, name='index'),
+#    url(r'^tutorsbase/student_crediting/', include('student_crediting.urls')),
+    url(r'^$', student_crediting_views.redirect_index, name='index'),
+    url(r'^student_crediting/', include('student_crediting.urls')),
 ]
