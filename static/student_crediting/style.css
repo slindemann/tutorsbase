@@ -46,7 +46,23 @@
     color: gray;
 }
 
+
+.mybold {
+    color: black;
+    font-weight: bold;
+}
+.mybold:hover { color: gray; }
+
+
+.myblue {
+    background-color: #4CAF50;
+}
+
+
+
 /*
+div { min-height:1px; width:50%}
+
 .mybtn {
   float : left;
   background-color: #4CAF50; 

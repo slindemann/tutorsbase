@@ -25,6 +25,8 @@ urlpatterns = [
     url(r'^student/(?P<student_pk>[0-9]+)/edit_mail$', views.edit_student_mail, name='edit_student_mail'),
     url(r'^stats/$', views.show_stats, name='show_stats'),
 #
+    url(r'^exercises/sheets$', views.exercise_sheets, name='exercise_sheets'),
+#
     url(r'^admin/', admin.site.urls),
     url(r'^login/$', auth_views.login, {'extra_context': extra_context}, name='login'),
     url(r'^logout/$', auth_views.logout, {'template_name': 'registration/my_logged_out.html', 'extra_context': extra_context} , name='logout'),

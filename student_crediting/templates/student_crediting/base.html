@@ -31,6 +31,7 @@ style="display:none;z-index:2;width:40%;min-width:300px" id="mySidebar">
 {% if request.user.is_authenticated %}
   <a href="{% url 'students' %}" onclick="w3_close()" class="w3-bar-item
     w3-button">My Students</a>
+  <a href="{% url 'exercise_sheets' %}" onclick="w3_close()" class="w3-bar-item w3-button">Exercise/Solutions</a>
   {% if request.user.is_staff %}
     <a href="{% url 'show_stats' %}" onclick="w3_close()" class="w3-bar-item w3-button">Statistics</a>
   {% endif %}
@@ -45,13 +46,13 @@ style="display:none;z-index:2;width:40%;min-width:300px" id="mySidebar">
 
 <!-- Top menu -->
 <div class="w3-top no-print">
-  <div class="w3-white w3-xlarge" style="max-width:800px;margin:auto">
+  <div class="w3-white w3-xlarge w3-dark-gray w3-text-white" style="max-width:800px;margin:auto">
     <div class="w3-button w3-padding w3-left" onclick="w3_open()">☰</div>
     <div class="w3-right w3-padding">{{ lecture }}</div>
     {% if logged_user.first_name %}
       <div class="w3-center w3-padding">{{ logged_user.first_name }} {{ logged_user.last_name }}</div>
     {% else %}
-      <div class="w3-center w3-padding"> {{ logged_user }} </div>
+      <div class="w3-center w3-padding">  &nbsp; </div>
     {% endif %}
     {% comment %}
     <div class="w3-right w3-padding">{% block logged_user %} {% endblock %}</div>
@@ -63,6 +64,7 @@ style="display:none;z-index:2;width:40%;min-width:300px" id="mySidebar">
 <!-- !PAGE CONTENT! -->
 {% comment %}
 <div class="w3-main w3-content" style="max-width:600px;margin-top:100px">
+<div class="w3-main w3-content w3-padding w3-light-grey " style="max-width:800px;margin-top:auto">
 {% endcomment %}
 <div class="w3-main w3-content w3-padding" style="max-width:800px;margin-top:100px">
   {% block content %}

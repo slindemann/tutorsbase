@@ -100,6 +100,74 @@ def give_credit(request, credit_pk=None):
     return render(request, 'student_crediting/give_credits.html', context)
 
 
+
+@login_required
+def exercise_sheets(request):
+  # 1) find out how many students each exgroup has ## NOT EACH! THE EXGROUP assigned to THIS user!
+  # 2) figure out how many exercises each sheet has
+  #   2a) compute for each exgroup how many exercises have to be graded
+  #   2b) compute for each exgroup how many presences have to be assigned
+  # 3) find out for each exgroup AND each each sheet 
+  #   3a) how many exercises are graded
+  #   3b) how many presences are assigned
+
+  ## step 1)
+  exgroup = ExGroup.objects.annotate(num_students=Count('student', distinct=True)).get(tutor=request.user)
+  print ("{} {}".format(exgroup,exgroup.num_students))
+  nstudents = exgroup.num_students
+
+  result_sheet = []
+  ## step 2)
+  sheets = Sheet.objects.annotate(num_exercises=Count('exercise', distinct=True))
+  for sh in sheets:
+    print ("{} has {} exercises".format(sh, sh.num_exercises))
+    result_sheet.append({})
+    result_sheet[-1]['number'] = sh.number
+    result_sheet[-1]['num_exercises'] = sh.num_exercises
+    result_sheet[-1]['exercises_to_be_graded'] = sh.num_exercises*nstudents
+    result_sheet[-1]['presences_to_be_assigned'] = nstudents
+    result_sheet[-1]['link_sheet'] = sh.link_sheet
+    result_sheet[-1]['link_solution'] = sh.link_solution
+
+  ## step 3)
+  students = Student.objects.filter(exgroup__tutor=request.user)
+  print (students)
+  _gc = True
+  for sh in result_sheet:
+    ## we always want to show the solutions to one exercise sheet in advance compared to what the tutors entered in the database
+    sh['show_solutions'] = _gc
+    qs_r = Result.objects.values('student').annotate(num_results=Count('id')).filter(exercise__sheet=sh['number']).filter(student__exgroup__tutor=request.user)
+    _sum_exgraded = 0
+    for qss in qs_r:
+      _sum_exgraded += qss['num_results']
+    sh['exercises_graded'] = _sum_exgraded
+    qs_p = Presence.objects.values('student').annotate(num_present=Count('id')).filter(sheet=sh['number']).filter(student__exgroup__tutor=request.user)
+    _sum_passigned = 0
+    for qss in qs_p:
+      _sum_passigned += qss['num_present']
+    sh['presences_assigned'] = _sum_passigned
+    print ("Sheet No{}: total_exgraded={}  total_passigned={} (qsr={}; qsp={})".format(sh['number'], _sum_exgraded, _sum_passigned, qs_r, qs_p))
+    if request.user.is_staff:
+      sh['grading_completed'] = True
+      print ("True")
+    elif (sh['exercises_to_be_graded']==sh['exercises_graded'] and sh['presences_to_be_assigned']==sh['presences_assigned']):
+      sh['grading_completed'] = True
+    else:
+      sh['grading_completed'] = False
+    _gc = sh['grading_completed']  ## remember this value to set 'show_solutions' accordingly in next iteration
+
+
+  context = {'sheets': sheets,
+             'results': result_sheet,
+             'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'config': config_read(),
+             }
+
+  return render(request, 'student_crediting/exercise_sheets.html', context)
+
+
+
 @login_required
 def students(request):
 #  current_event = 'Experimental Physics I'

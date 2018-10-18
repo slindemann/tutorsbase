@@ -1,0 +1,32 @@
+{% extends 'student_crediting/base.html' %}
+
+{% block content %}
+{% comment %}
+  <h1>Download Exercises and Solutions </h1>
+{% endcomment %}
+
+  <table class="w3-table-all w3-hoverable w3-card-4">
+    <tr>
+        <th> Sheet </th>
+        <th> Exercises </th>
+        <th> Solutions </th>
+    </tr>
+    {% for sheet in results %}
+    <tr>
+        <td> No{{sheet.number}} </td>
+        <td> <a href="{{sheet.link_sheet}}" class="mylink">Link</a> </td>
+{% comment %}
+        <td>{% if sheet.exercises_to_be_graded == sheet.exercises_graded and sheet.presences_to_be_assigned == sheet.presences_assigned or request.user.is_staff %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
+{% endcomment %}
+        <td>{% if sheet.show_solutions %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
+    {% endfor %}
+    </tr>
+  </table>
+  <p>
+    <div class="w3-right w3-padding"> <a href="{% url 'students' %}" class="mylink">back to 'My Students'</a> </div>
+  </p>
+
+
+
+{% endblock %}
+

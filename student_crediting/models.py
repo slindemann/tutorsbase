@@ -41,6 +41,8 @@ class Sheet(models.Model):
     ## this class holds the metadata to the exercise sheets
     number = models.IntegerField(help_text="Exercise Sheet No", unique=True)
     deadline = models.DateTimeField(help_text="Due date of exercise")
+    link_sheet = models.CharField(help_text="Link to exercise sheet", max_length=127, default=None, blank=True, null=True)
+    link_solution = models.CharField(help_text="Link to exercise sheet", max_length=127, default=None, blank=True, null=True)
 
     def __str__(self):
         return "[ID{} Exercise Sheet No{}]".format(self.pk, self.number)
