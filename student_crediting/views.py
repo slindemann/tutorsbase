@@ -239,7 +239,7 @@ def student_details(request, student_pk):
         continue
       rdata[-1]['sheet_data'].append({})
       rdata[-1]['sheet_data'][-1]['exercise'] = exnumber
-      for md in sheets_meta[snumber][exnumber]:
+      for md in sorted(sheets_meta[snumber][exnumber]):
         rdata[-1]['sheet_data'][-1][md] = sheets_meta[snumber][exnumber][md]
 
   context = {#'form': form,
