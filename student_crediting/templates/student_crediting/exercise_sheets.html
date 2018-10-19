@@ -18,7 +18,11 @@
 {% comment %}
         <td>{% if sheet.exercises_to_be_graded == sheet.exercises_graded and sheet.presences_to_be_assigned == sheet.presences_assigned or request.user.is_staff %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
 {% endcomment %}
-        <td>{% if sheet.show_solutions %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
+        <td>{% if sheet.link_solution %}
+              {% if sheet.show_solutions %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
+            {% else %}
+               <div class="absent"> Not available yet </div>
+            {% endif %}
     {% endfor %}
     </tr>
   </table>

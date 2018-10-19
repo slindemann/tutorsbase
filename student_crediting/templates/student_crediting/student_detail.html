@@ -28,7 +28,7 @@
                     <td> <a href="presence/new/{{ rs.sheet }}" class="nyd"> nyd  </a></td>
                 {% else %}
            {% comment %}      <td> <a href="presence/update/{{ rs.presence.id }}">{% if rs.presence.present %} &#10004; {% else %} &#10008; {% endif %}</a></td> {% endcomment %}
-                <td> <a href="presence/update/{{ rs.presence.id }}"{% if rs.presence.present %} class="present"> &#10004; {% else %} class="absent"> &#10008; {% endif %}</a></td>
+                <td> <a href="presence/update/{{ rs.presence.id }}"{% if rs.presence.present %} class="present"> &#10004;&#xfe0e; {% else %} class="absent"> &#10008; {% endif %}</a></td>
                 {% endif %}
                 {% for re in rs.sheet_data %}
                   {% if re.credit_pk == None %}
