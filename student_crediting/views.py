@@ -162,6 +162,9 @@ def exercise_sheets(request):
     for sh in sheets:
       result_sheet.append({})
       result_sheet[-1]['show_soltions'] = True
+      result_sheet[-1]['link_sheet'] = sh.link_sheet
+      result_sheet[-1]['link_solution'] = sh.link_solution
+
 
 
   context = {'sheets': sheets,
