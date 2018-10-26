@@ -353,8 +353,6 @@ def edit_student_mail(request, student_pk=None):
 
 @login_required
 def show_stats(request):
-#  current_event = 'Experimental Physics I'
-#  current_user = request.user
   if not request.user.is_staff:
     raise PermissionDenied("Permission denied.")
   else:
@@ -377,5 +375,40 @@ def show_stats(request):
                'credit_values': credit_values,
                }
     return render(request, 'student_crediting/statistics.html', context)
+
+
+@login_required
+def stats_overview(request):
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied.")
+  else:
+    results = Result.objects.select_related('student__exgroup__tutor').all()
+    credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
+    for egroup in ExGroup.objects.select_related('tutor').all():
+      credit_values.append({})
+      credit_values[-1]['tutor'] = egroup.tutor.last_name
+      credit_values[-1]['group'] = egroup.id
+      for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
+        print (fl)
+      try:
+        credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
+      except:
+        pass
+
+    #sum_credits = Sum('results__credits', filter=Q(results__student__exgroup) )
+
+    ## histogram data using numpy:
+    for eg in credit_values:
+      raw_data = eg['data']
+      _h, _edges = np.histogram(raw_data, bins=10, range=(0,10))
+      eg['hist'] = list(_h)
+      eg['edges'] = _edges
+
+    context = {'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               'credit_values': credit_values,
+               }
+    return render(request, 'student_crediting/statistics_overview.html', context)
 
 

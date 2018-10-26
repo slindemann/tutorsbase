@@ -2,26 +2,31 @@
 
 {% block content %}
   <div class="w3-container w3-margin-left">
-    <h1>Here come's the stats part...</h1>
-    {% comment %} {% for credit in credits %}
-    <p><br>{{ credit.credits }}<br></p>
-    {% endfor %} 
-    <p><br>{{ credit_values }}<br></p>{% endcomment  %}
+    <h1>Total Credits - Comparing ExGroups to Full Distribution</h1>
   <div id="container"></div>
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
   <div id="container"></div>
   <script>
-	var data = {{ credit_values.0.data }};
+	var data = {{ credit_values.0.hist }};
 	Highcharts.chart('container', {
+        chart: {
+            type: 'column'
+        },
 		title: {
-			text: 'Highcharts Histogram'
+			text: 'Credits Overview'
 		},
         credits: {
             enabled: false
         },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0
+            }
+        },
 		xAxis: {
-			title: { text: 'Histogram' },
+			title: { text: 'Credits' },
 			alignTicks: false,
 		},
 		yAxis: {
@@ -29,11 +34,7 @@
 		},
 		series: [{
             name: '{{ credit_values.0.tutor }}(G{{ credit_values.0.group}})',
-			type: 'histogram',
-			baseSeries: 1,
-		}, {
 			data: data,
-			visible: false
 		}]
 	});
   </script>
