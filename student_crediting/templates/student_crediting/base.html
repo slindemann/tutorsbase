@@ -33,7 +33,9 @@ style="display:none;z-index:2;width:40%;min-width:300px" id="mySidebar">
     w3-button">My Students</a>
   <a href="{% url 'exercise_sheets' %}" onclick="w3_close()" class="w3-bar-item w3-button">Exercise/Solutions</a>
   {% if request.user.is_staff %}
+  {% comment %}
     <a href="{% url 'show_stats' %}" onclick="w3_close()" class="w3-bar-item w3-button">Statistics</a>
+  {% endcomment %}
     <a href="{% url 'stats_overview' %}" onclick="w3_close()" class="w3-bar-item w3-button">Statistics Overview</a>
   {% endif %}
   {% if request.user.is_superuser %}

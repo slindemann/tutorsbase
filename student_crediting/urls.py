@@ -23,10 +23,12 @@ urlpatterns = [
     url(r'^student/(?P<student_pk>[0-9]+)/presence/new/(?P<sheet_no>[0-9]+)$', views.give_presence, name='give_presence'),
     url(r'^student/([0-9]+)/presence/update/(?P<presence_pk>[0-9]+)$', views.edit_presence, name='edit_presence'),
     url(r'^student/(?P<student_pk>[0-9]+)/edit_mail$', views.edit_student_mail, name='edit_student_mail'),
-    url(r'^stats/$', views.show_stats, name='show_stats'),
+#    url(r'^stats/$', views.show_stats, name='show_stats'),
     url(r'^stats_overview/$', views.stats_overview, name='stats_overview'),
 #
     url(r'^exercises/sheets$', views.exercise_sheets, name='exercise_sheets'),
+#
+    path('exgroup/<int:exgroup_pk>/', views.exgroup_details, name='exgroup_details'),
 #
     url(r'^admin/', admin.site.urls),
     url(r'^login/$', auth_views.login, {'extra_context': extra_context}, name='login'),

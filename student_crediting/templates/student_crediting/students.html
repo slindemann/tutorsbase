@@ -2,13 +2,17 @@
 
 {% block content %}
   {% if student_list %}
-      <table class="w3-table-all w3-hoverable w3-card-4">
+      <table class="w3-table-all w3-hoverable w3-card-4" id="students_table">
         <tr>
 		  <th>RZ ID</th>
-          <th>Name</th>
-          <th>Surname</th>
-          {% if request.user.is_staff %}<th>Tutor</th>{% endif %}
-          <th>Credits</th>
+          <th class="cursor-pointer-head" onclick="sortTable(1)">Name</th>
+          <th class="cursor-pointer-head" onclick="sortTable(2)">Surname</th>
+          {% if request.user.is_staff %}
+            <th class="cursor-pointer-head" onclick="sortTable(3)">Group</th>
+            <th class="cursor-pointer-head" onclick="sortTable(4)">Credits</th>
+		  {% else %}
+            <th class="cursor-pointer-head" onclick="sortTable(3)">Credits</th>
+		  {% endif %}
           <th>Credits [%]</th>
         </tr>
       {% for student in student_list %}
@@ -16,17 +20,93 @@
             <td><a href="student/{{ student.id }}/" class="mylink">{{ student.studentID }}</a></td>
             <td>{{ student.name }}</td>
             <td>{{ student.surname }}</td>
-            {% if request.user.is_staff %}<td>{{ student.exgroup.tutor }} (G{{ student.exgroup.number}})</td>{% endif %}
-          {% if config.bonus_credits %}
-            <td>{{ student.credits_sum }}+{{ student.bonus_credits_sum }}</td> 
-            <td>{{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }} </td> 
-          {% else %}
-            <td>{{ student.credits_sum|floatformat:-1 }}</td> 
-            <td>{{ student.credits_sum_perc|floatformat:-1 }}</td> 
-          {% endif %}
+              {% if request.user.is_staff %}
+              <td><a href="{% url 'exgroup_details' student.exgroup.number %}" class="mylink"> G{{ student.exgroup.number}}</a> ({{ student.exgroup.tutor.last_name }})</td>
+              {% endif %}
+              {% if config.bonus_credits %}
+                <td>{{ student.credits_sum }}+{{ student.bonus_credits_sum }}</td> 
+                <td>{{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }} </td> 
+              {% else %}
+                <td>{{ student.credits_sum|floatformat:-1 }}</td> 
+                <td>{{ student.credits_sum_perc|floatformat:-1 }}</td> 
+              {% endif %}
         </tr>
       {% endfor %}
       </table>
+
+<script>
+function sortTable(n) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById("students_table");
+  switching = true;
+  //Set the sorting direction to ascending:
+  dir = "asc"; 
+  /*Make a loop that will continue until
+  no switching has been done:*/
+  while (switching) {
+    //start by saying: no switching is done:
+    switching = false;
+    rows = table.rows;
+    /*Loop through all table rows (except the
+    first, which contains table headers):*/
+    for (i = 1; i < (rows.length - 1); i++) {
+      //start by saying there should be no switching:
+      shouldSwitch = false;
+      /*Get the two elements you want to compare,
+      one from current row and one from the next:*/
+      x = rows[i].getElementsByTagName("TD")[n];
+      y = rows[i + 1].getElementsByTagName("TD")[n];
+      /*check if the two rows should switch place,
+      based on the direction, asc or desc:*/
+      if (dir == "asc") {
+        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+          //if so, mark as a switch and break the loop:
+          shouldSwitch= true;
+          break;
+        }
+      } else if (dir == "desc") {
+        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+          //if so, mark as a switch and break the loop:
+          shouldSwitch = true;
+          break;
+        }
+      }
+    }
+    if (shouldSwitch) {
+      /*If a switch has been marked, make the switch
+      and mark that a switch has been done:*/
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      //Each time a switch is done, increase this count by 1:
+      switchcount ++;      
+    } else {
+      /*If no switching has been done AND the direction is "asc",
+      set the direction to "desc" and run the while loop again.*/
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+  //var atag = " a";// " &#x25B2;"
+  //var dtag = " d";// " &#x25BC;"
+  var atag = " &#x25B2;"
+  var dtag = " &#x25BC;"
+  for (i = 1; i < (rows[0].cells.length - 2); i++) {
+      _ah = rows[0].getElementsByTagName("TH")[i];
+      _trimmed = _ah.innerHTML.split(" ")[0];
+      _ah.innerHTML = _trimmed;
+  }
+  sorted_header = rows[0].getElementsByTagName("TH")[n];
+  old = sorted_header.innerHTML;
+  if (dir == "asc") {
+    sorted_header.innerHTML = old + atag;
+  } else {
+    sorted_header.innerHTML = old + dtag;
+  }
+}
+</script>
+
   {% else %}
   <p>Diese Vorlesung hat noch keine Studenten. <br>
   Please report this issue to the <a href="mailto:sebastian.lindemann@physik.uni-freiburg.de">webmaster</a>.</p>

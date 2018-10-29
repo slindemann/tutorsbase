@@ -1,0 +1,11 @@
+{% extends 'student_crediting/base.html' %}
+
+{% block content %}
+  <div class="w3-container w3-margin-left">
+    <h1>ExGroup {{ exgroup.number }}</h1>
+    <p> Tutor: <div class="w3-xlarge w3-margin-left"> {{exgroup.tutor.first_name}} {{exgroup.tutor.last_name}} </div> </p>
+    <p> EMail: <div class="w3-xlarge w3-margin-left"> <a href="mailto:{{exgroup.tutor.email}}">{{exgroup.tutor.email}}<a> </div> </p>
+    <p> Venue: <div class="w3-xlarge w3-margin-left"> {{exgroup.venue}} </div></p>
+  </div>
+{% endblock %}
+

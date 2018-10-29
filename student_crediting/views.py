@@ -161,6 +161,7 @@ def exercise_sheets(request):
     ## Staff can always see solutions
     for sh in sheets:
       result_sheet.append({})
+      result_sheet[-1]['number'] = sh.number
       result_sheet[-1]['show_solutions'] = True
       result_sheet[-1]['link_sheet'] = sh.link_sheet
       result_sheet[-1]['link_solution'] = sh.link_solution
@@ -263,9 +264,27 @@ def student_details(request, student_pk):
 
 
 @login_required
+def exgroup_details(request, exgroup_pk):
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied")
+  exgroup = get_object_or_404(ExGroup, id=exgroup_pk)
+  context = {
+      'exgroup':exgroup,
+      'lecture': CURRENT_EVENT,
+      'logged_user': request.user,
+      'config': config_read(),
+      }
+  return render(request, 'student_crediting/exgroup_detail.html', context)
+
+
+
+
+@login_required
 def edit_credits(request, student_pk, sheet_no, exercise_pk):
   ## generates new Results object with above data and passes the pk of this object to 'give_credit' function
   student = get_object_or_404(Student, id=student_pk)
+  if not (student.exgroup.tutor == request.user or request.user.is_staff):
+    raise PermissionDenied("Permission denied")
   exercise = get_object_or_404(Exercise, id=exercise_pk)
   try:
     res = Result.objects.filter(student=student, exercise=exercise)[0]
@@ -277,9 +296,11 @@ def edit_credits(request, student_pk, sheet_no, exercise_pk):
 @login_required
 def give_presence(request, student_pk, sheet_no):
   student = get_object_or_404(Student, id=student_pk)
+  if not (student.exgroup.tutor == request.user or request.user.is_staff):
+    raise PermissionDenied("Permission denied")
   sheet = get_object_or_404(Sheet, number=sheet_no)
-  print ('student: ', student)
-  print ('sheet: ', sheet)
+  #print ('student: ', student)
+  #print ('sheet: ', sheet)
   try:
     pres = Presence.objects.filter(student=student, sheet=sheet)[0]
   except:
@@ -384,25 +405,27 @@ def stats_overview(request):
   else:
     results = Result.objects.select_related('student__exgroup__tutor').all()
     credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
-    for egroup in ExGroup.objects.select_related('tutor').all():
+    for egroup in ExGroup.objects.select_related('tutor').all().order_by('number'):
       credit_values.append({})
       credit_values[-1]['tutor'] = egroup.tutor.last_name
-      credit_values[-1]['group'] = egroup.id
-      for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
-        print (fl)
+      credit_values[-1]['group'] = egroup.number
+#      for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
+#        print (fl)
       try:
         credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
       except:
-        pass
+        credit_values[-1]['data'] = None
 
     #sum_credits = Sum('results__credits', filter=Q(results__student__exgroup) )
 
     ## histogram data using numpy:
     for eg in credit_values:
       raw_data = eg['data']
-      _h, _edges = np.histogram(raw_data, bins=10, range=(0,10))
-      eg['hist'] = list(_h)
-      eg['edges'] = _edges
+      if raw_data:
+        _h, _edges = np.histogram(raw_data, bins=11, range=(0,10), density=True)
+        eg['hist'] = list(_h)
+        eg['edges'] = _edges
+        #print ("G{}: data={}, hist={}, edges={}".format(eg['group'],eg['data'],eg['hist'],eg['edges']))
 
     context = {'lecture': CURRENT_EVENT,
                'logged_user': request.user,

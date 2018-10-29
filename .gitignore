@@ -13,3 +13,4 @@ tutorsbase.sock
 tutorsbase/settings.py
 gunicorn.access
 gunicorn.log
+db_dumps
