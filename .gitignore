@@ -1,6 +1,7 @@
 *.pyc
 *~
 *.swp
+*.save
 __pycache__
 tbaseenv
 db.sqlite3

@@ -53,16 +53,13 @@
 }
 .mybold:hover { color: gray; }
 
-
-.myblue {
-    background-color: #4CAF50;
+.cursor-pointer-head {
+    cursor: pointer;
 }
-
+.cursor-pointer-head:hover { color: gray }
 
 
 /*
-div { min-height:1px; width:50%}
-
 .mybtn {
   float : left;
   background-color: #4CAF50; 
