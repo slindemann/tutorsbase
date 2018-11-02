@@ -192,7 +192,7 @@ def students(request):
                                           bonus_credits_sum=Sum('result__bonus_credits'), 
                                           credits_sum_perc=100*Sum('result__credits')/sum_credits['total_credits'],
                                           bonus_credits_sum_perc=100*Sum('result__bonus_credits')/sum_credits['total_bonus_credits'],
-                                          )
+                                          ).order_by('exgroup__number','surname')
   context = {#'form': form,
              'student_list': student_list,
              'lecture': CURRENT_EVENT,
@@ -409,19 +409,22 @@ def stats_overview(request):
       credit_values.append({})
       credit_values[-1]['tutor'] = egroup.tutor.last_name
       credit_values[-1]['group'] = egroup.number
-#      for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
-#        print (fl)
+
+      my_list = list(results.filter(student__exgroup=egroup).values_list('credits', flat=True))
       try:
-        credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
+        # convert values to float and remove np.nan/None values:
+        _dat = np.array(my_list, dtype=np.float)
+        _dat = _dat[~np.isnan(_dat)]
+        credit_values[-1]['data'] = list(_dat)
       except:
         credit_values[-1]['data'] = None
-
-    #sum_credits = Sum('results__credits', filter=Q(results__student__exgroup) )
 
     ## histogram data using numpy:
     for eg in credit_values:
       raw_data = eg['data']
-      if raw_data:
+      #if type(raw_data) == np.array:
+      if raw_data and len(raw_data)>0:
+        print ('raw_data: ', raw_data)
         _h, _edges = np.histogram(raw_data, bins=11, range=(0,10), density=True)
         eg['hist'] = list(_h)
         eg['edges'] = _edges

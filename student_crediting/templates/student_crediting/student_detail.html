@@ -34,7 +34,7 @@
                   {% if re.credit_pk == None %}
                     <td> <a href="credits/new/{{ rs.sheet }}/{{ re.exercise_pk }}" class="nyd"> nyd </a> </td>
                   {% else %}
-                  <td> <a href="{{ re.credit_pk }}" class="done">{% if re.credits_achieved %} {{ re.credits_achieved|floatformat:-1 }} {% else %} None {% endif %}{% if config.bonus_credits %}+{{ re.bonus_credits_achieved|floatformat:-1 }}{% endif %}{% if re.blackboard_performance %} (<b>{{re.blackboard_performance}}</b>) {% endif %}</a> </td>
+                  <td> <a href="{{ re.credit_pk }}" class="done">{% if re.credits_achieved or re.credits_achieved == 0 %} {{ re.credits_achieved|floatformat:-1 }} {% else %} None {% endif %}{% if config.bonus_credits %}+{{ re.bonus_credits_achieved|floatformat:-1 }}{% endif %}{% if re.blackboard_performance %} (<b>{{re.blackboard_performance}}</b>) {% endif %}</a> </td>
                   {% endif %}
                 {% endfor %}
             </tr>
