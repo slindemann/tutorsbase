@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
 
-from django.db.models import Avg, Count, Min, Sum
+from django.db.models import Avg, Count, Min, Sum, F, Q
 import numpy as np
 
 CURRENT_EVENT = 'Experimental Physics I'
@@ -437,4 +437,90 @@ def stats_overview(request):
                }
     return render(request, 'student_crediting/statistics_overview.html', context)
 
+@login_required
+def stats_detail(request):
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied.")
+  sheets = Sheet.objects.all().order_by('number')
+  shs = []
+  for sh in sheets:
+    shs.append({})
+    shs[-1]['number'] = sh.number
+    shs[-1]['deadline'] = sh.deadline
+    shs[-1]['exgroups'] = []
+    exgroups = ExGroup.objects.all().order_by('number')
+    print ("SHEET NO ", sh.number)
+    for eg in exgroups:
+      print ("Group No{}".format(eg.number))
+      avg = Avg('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) ))
+      csum = Sum('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) ))
+      #avg = Avg('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__credits__isnull=False) ))
+      #csum = Sum('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__credits__isnull=False) ))
+      ex = Exercise.objects.annotate(avg=avg).annotate(csum=csum).filter(sheet=sh).order_by('number')
+      for iex in ex:
+        print ("\tExercise No{} (ID={}): Avg={} Sum={}".format(iex.number,  iex.id, iex.avg, iex.csum))
+      shs[-1]['exgroups'].append({})
+      shs[-1]['exgroups'][-1]['number']=eg.number
+      shs[-1]['exgroups'][-1]['exercises']=ex
 
+  #print ("@@SHS = \n", shs)
+
+  context = {'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'config': config_read(),
+             'rsheets': shs,
+             'sheets': sheets,
+             }
+  return render(request, 'student_crediting/statistics_detail.html', context)
+
+# 
+# 
+# 
+#       #res = Result.objects.annotate(avg=avg)
+# 
+# @login_required
+# def stats_detail(request):
+#   if not request.user.is_staff:
+#     raise PermissionDenied("Permission denied.")
+#   sheets = Sheet.objects.all().order_by('number')
+#   shs = []
+#   for sh in sheets:
+#     shs.append({})
+#     shs[-1]['number'] = sh.number
+#     shs[-1]['deadline'] = sh.deadline
+#     exercises = Exercise.objects.filter(sheet=sh.number).order_by('number')
+#     shs[-1]['exercises'] = []
+#     for ex in exercises:
+#       shs[-1]['exercises'].append({})
+#       shs[-1]['exercises'][-1]['number']= ex.number
+#       avg_credits = Avg('student__result__credits', filter=( Q(student__result__exercise=ex)&Q(student__result__isnull=False) ) )
+#       sum_credits = Sum('student__result__credits', filter=( Q(student__result__exercise=ex)&Q(student__result__isnull=False) ) )
+#       egs = ExGroup.objects.annotate(avg_credits=avg_credits).annotate(sum_credits=sum_credits).order_by('number')
+#       shs[-1]['exercises'][-1]['exgroups']= egs
+# 
+#   # reorganize:
+#   rshs = []
+# 
+#   for sh in shs:
+#     rshs.append({})
+#     rshs[-1]['number'] = sh['number']
+#     rshs[-1]['exgroup'] = []
+#     exgroups = ExGroup.objects.all().order_by('number')
+#     for exg in exgroups:
+#       rshs[-1]['exgroup'].append({})
+#       rshs[-1]['exgroup'][-1]['number'] = exg.number
+#     for ex in sh['exercises']:
+#       for ex_g in ex['exgroups']:
+#         _egnum = ex_g.number
+#         rshs[-1][
+# 
+# 
+#   context = {'lecture': CURRENT_EVENT,
+#              'logged_user': request.user,
+#              'config': config_read(),
+#              'sheets': shs,
+#              }
+#   return render(request, 'student_crediting/statistics_detail.html', context)
+# 
+# 
+# 
