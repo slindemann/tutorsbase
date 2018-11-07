@@ -5,13 +5,13 @@
       <table class="w3-table-all w3-hoverable w3-card-4" id="students_table">
         <tr>
 		  <th>RZ ID</th>
-          <th class="cursor-pointer-head" onclick="sortTable(1)">Name</th>
-          <th class="cursor-pointer-head" onclick="sortTable(2)">Surname</th>
+          <th class="cursor-pointer-head" onclick="sortTable(1, numeric=false)">Name</th>
+          <th class="cursor-pointer-head" onclick="sortTable(2, numeric=false)">Surname</th>
           {% if request.user.is_staff %}
-            <th class="cursor-pointer-head" onclick="sortTable(3)">Group</th>
-            <th class="cursor-pointer-head" onclick="sortTable(4)">Credits</th>
+            <th class="cursor-pointer-head" onclick="sortTable(3, numeric=false)">Group</th>
+            <th class="cursor-pointer-head" onclick="sortTable(4, numeric=true)">Credits</th>
 		  {% else %}
-            <th class="cursor-pointer-head" onclick="sortTable(3)">Credits</th>
+            <th class="cursor-pointer-head" onclick="sortTable(3, numeric=true)">Credits</th>
 		  {% endif %}
           <th>Credits [%]</th>
         </tr>
@@ -35,8 +35,11 @@
       </table>
 
 <script>
-function sortTable(n) {
+//function sortTable(n) {
+function sortTable(n, numeric) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  var ssw = false;
+  //console.log("Launched sortTabel(n="+n+", numeric="+numeric+") -> switchcount = "+switchcount);
   table = document.getElementById("students_table");
   switching = true;
   //Set the sorting direction to ascending:
@@ -49,7 +52,7 @@ function sortTable(n) {
     rows = table.rows;
     /*Loop through all table rows (except the
     first, which contains table headers):*/
-    for (i = 1; i < (rows.length - 1); i++) {
+    for (i = 1; i < (rows.length - 2); i++) {
       //start by saying there should be no switching:
       shouldSwitch = false;
       /*Get the two elements you want to compare,
@@ -58,18 +61,12 @@ function sortTable(n) {
       y = rows[i + 1].getElementsByTagName("TD")[n];
       /*check if the two rows should switch place,
       based on the direction, asc or desc:*/
-      if (dir == "asc") {
-        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-          //if so, mark as a switch and break the loop:
-          shouldSwitch= true;
+      if (numeric) { ssw = (+x.innerHTML > +y.innerHTML); } else { ssw = (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()); }
+      if (dir == "desc") { ssw = !ssw; }
+      if (ssw) {
+          shouldSwitch = true ;
+          //if (switchcount > 1000) {  debugger; }
           break;
-        }
-      } else if (dir == "desc") {
-        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-          //if so, mark as a switch and break the loop:
-          shouldSwitch = true;
-          break;
-        }
       }
     }
     if (shouldSwitch) {
@@ -88,8 +85,6 @@ function sortTable(n) {
       }
     }
   }
-  //var atag = " a";// " &#x25B2;"
-  //var dtag = " d";// " &#x25BC;"
   var dtag = " &#x25B2;"
   var atag = " &#x25BC;"
   for (i = 1; i < (rows[0].cells.length - 1); i++) {
