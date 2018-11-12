@@ -15,6 +15,7 @@ from django.utils import timezone
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
 
 from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
+from django.db.models import FloatField
 import numpy as np
 
 CURRENT_EVENT = 'Experimental Physics I'
@@ -442,7 +443,7 @@ def stats_detail(request):
   if not request.user.is_staff:
     raise PermissionDenied("Permission denied.")
   sheets = Sheet.objects.all().order_by('number')
-#  sheets = Sheet.objects.select_related('exercises').order_by('number')
+#  sheets = Sheet.objects.all().order_by('number').exclude(number__in=[4,5])
   shs = []
   for sh in sheets:
     shs.append({})
@@ -450,29 +451,34 @@ def stats_detail(request):
     shs[-1]['exercises'] = Exercise.objects.filter(sheet=sh)
     shs[-1]['deadline'] = sh.deadline
     shs[-1]['exgroups'] = []
-    #exgroups = ExGroup.objects.all().order_by('number')
     exgroups = ExGroup.objects.exclude(number=10).order_by('number')
-#    print ("SHEET NO ", sh.number)
+    consider_students = Student.objects.annotate(credits_sum=Sum('result__credits')).exclude(credits_sum=0)
+    ## uncomment, if students that did not hand in a solution only to this sheet, should not be considered:
+    #consider_students = Student.objects.annotate( credits_sum=Sum('result__credits', filter=(Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)) ) ).exclude(credits_sum=0).order_by('pk')
+    cs_pk = consider_students.values_list('pk' ,flat=True)
+    print ("I consider the following students for sheet No{}:".format(sh.number))
+    for _is in consider_students:
+      print ("\t(id{}) {} {}: {:.2f}".format(_is.pk, _is.name, _is.surname, _is.credits_sum))
     for eg in exgroups:
-#      print ("Group No{}".format(eg.number))
-      avg = Avg('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) ))
-      stddev = StdDev('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) ))
-      csum = Sum('result__credits', filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) ))
+      #avg = Avg('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) & Q(result__student__in=consider_students) ))
+      #stddev = StdDev('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__in=consider_students) ))
+      #csum = Sum('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__in=consider_students) ))
+      avg = Avg('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) & Q(result__student__pk__in=cs_pk) ))
+      stddev = StdDev('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__pk__in=cs_pk) ))
+      csum = Sum('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__pk__in=cs_pk) ))
       errp = F('avg')+F('stddev')
       errn = F('avg')-F('stddev')
       avgp = F('avg')+0.15
       avgn = F('avg')-0.15
       ex = Exercise.objects.annotate(avg=avg).annotate(csum=csum).annotate(stddev=stddev).annotate(errp=errp).annotate(errn=errn).annotate(avgp=avgp).annotate(avgn=avgn).filter(sheet=sh).order_by('number')
-#      ex = ex.annotate( errp=(F('avg')+F('stddev')) )
-#      ex = ex.annotate( errp=(F('avg')+F('stddev')), output_field=models.FloatField() )
-#      for iex in ex:
-#        print ("\tExercise No{} (ID={}): Avg={} Sum={}".format(iex.number,  iex.id, iex.avg, iex.csum))
+      #ex = Exercise.objects.annotate(avg=avg).annotate(avgp=avgp).annotate(avgn=avgn).filter(sheet=sh).order_by('number')
       shs[-1]['exgroups'].append({})
       shs[-1]['exgroups'][-1]['number']=eg.number
       shs[-1]['exgroups'][-1]['tutor']=eg.tutor.last_name
       shs[-1]['exgroups'][-1]['exercises']=ex
 
 
+  print ("Query done. Trying to render now ...")
   context = {'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
