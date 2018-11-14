@@ -7,10 +7,19 @@
     <h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
 {% endif %}
 
-{% if student.email %}
-<p>EMail: <a href="mailto:{{ student.email }}" class="w3-xlarge w3-margin-right">{{ student.email }}</a> <a href="edit_mail" class="mylink">(edit)</a>  </p>
+
+{% if request.user.is_staff %}
+    {% if student.email %}
+        <p>EMail: <a href="mailto:{{ student.email }}" class="w3-xlarge w3-margin-right">{{ student.email }}</a> <a href="{% url 'edit_student_full' student.id %}" class="mylink">(edit)</a>  </p>
+    {% else %}
+        <p><a href="{% url 'edit_student_full' student.id %}" class="absent w3-margin-right">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a>  <a href="{% url 'edit_student_full' student.id %}" class="mylink">(edit)</a>  </p>
+    {% endif %}
 {% else %}
-<p><a href="edit_mail" class="absent">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
+    {% if student.email %}
+    <p>EMail: <a href="mailto:{{ student.email }}" class="w3-xlarge w3-margin-right">{{ student.email }}</a> <a href="{% url 'edit_student_mail' student.id %}" class="mylink">(edit)</a>  </p>
+    {% else %}
+        <p><a href="{% url 'edit_student_mail' student.id %}" class="absent">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
+    {% endif %}
 {% endif %}
 
   {% if rdata %}

@@ -44,6 +44,15 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # During devel
 # EMAIL_PORT = 1025
 
 
+#######################
+## CUSTOM STUFF HERE:
+CURRENT_EVENT = 'Experimental Physics I'
+BCC_MAILTO = ['laurel@har.dy', ]
+SEND_CREDIT_UPDATES_TO_STUDENTS = True
+##
+#######################
+
+
 
 # Application definition
 
@@ -98,7 +107,7 @@ DATABASES = {
 #    }
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'tb_12Nov',
+        'NAME': 'tb_14Nov',
         'USER': 'sebastian',
 #        'USER': 'postgres',
         'PASSWORD': 'sl1082',

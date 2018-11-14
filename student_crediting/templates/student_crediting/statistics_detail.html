@@ -44,11 +44,22 @@
                 {% for ex in sheet.exercises %}
                   'Ex {{ex.number}}', 
                 {% endfor %}
+                'TOTAL',
                   ]
         },
 		yAxis: {
-			title: { text: 'Average Credits' },
+			title: { text: 'Avg +/- StdDev [Credits]' },
+            min: -1,
+            max: 11,
 		},
+        tooltip:{
+            formatter: function() {
+                var s = "<div style='font-size: smaller;'>"+ this.x +"</div>";
+                return s += '<br/><span style="color:' + this.point.color + '">\u25CF</span> '+ this.series.name + ': Avg: <b>' + this.point.avg + '</b> (' + this.point.low + ', ' + this.point.high + ')';
+            },
+            outside: true,
+            hideDelay: 50,
+        },
 		series: [
             {% for eg in sheet.exgroups %}
                 {
@@ -56,12 +67,23 @@
                 data: [
                 {% for ex in eg.exercises %}
                    {% if ex.errn and ex.errp %}
-                     //[{{ex.errn|floatformat:-2}}, {{ex.errp|floatformat:-2}}],
-                     [{{ex.avgn|floatformat:-2}}, {{ex.avgp|floatformat:-2}}],
+                    {  low:  {{ex.errn|floatformat:-2}}, 
+                       high: {{ex.errp|floatformat:-2}},
+                       avg : {{ex.avg|floatformat:-1}}, 
+                    },
                    {% else %}
-                     [ , ],
+                    {
+                        low: 0,
+                        high: 0,
+                        avg: 0,
+                    },
                    {% endif %}
                 {% endfor %}
+                    {
+                        low: {{eg.total.low|floatformat:-2}},
+                        high: {{eg.total.high|floatformat:-2}},
+                        avg: {{eg.total.avg|floatformat:-1}},
+                    },
                      ],
                 },
             {% endfor %}

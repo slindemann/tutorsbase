@@ -12,7 +12,7 @@ from django.core.mail import EmailMessage
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
-from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm
+from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm
 from django.utils import timezone
 
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
@@ -35,8 +35,6 @@ def logged_out(request):
 
 @login_required
 def redirect_index(request):
-#  return HttpResponseRedirect('student_crediting')
-#  return HttpResponseRedirect('students')
   return redirect('students')
 
 
@@ -426,6 +424,32 @@ def edit_student_mail(request, student_pk=None):
     return render(request, 'student_crediting/edit_student.html', context)
 
 
+@login_required
+def edit_student_full(request, student_pk=None):
+  if not student_pk:
+    raise PermissionDenied("Permission denied.")
+  instance = get_object_or_404(Student, pk=student_pk)
+  form = EditStudentFullForm(request.POST or None, instance=instance)
+  if form.is_valid():
+    student = Student.objects.select_related('exgroup__tutor').get(id=student_pk)
+    if request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+      sc.save()
+      return redirect('student_details', student_pk)
+    else:
+      raise PermissionDenied("Permission denied.")
+  else:
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+
+    return render(request, 'student_crediting/edit_student.html', context)
+
+
+
 
 @login_required
 def show_stats(request):
@@ -499,7 +523,6 @@ def stats_detail(request):
   if not request.user.is_staff:
     raise PermissionDenied("Permission denied.")
   sheets = Sheet.objects.all().order_by('number')
-#  sheets = Sheet.objects.all().order_by('number').exclude(number__in=[4,5])
   shs = []
   for sh in sheets:
     shs.append({})
@@ -508,19 +531,14 @@ def stats_detail(request):
     shs[-1]['deadline'] = sh.deadline
     shs[-1]['exgroups'] = []
     exgroups = ExGroup.objects.exclude(number=10).order_by('number')
-    consider_students = Student.objects.annotate(credits_sum=Sum('result__credits')).exclude(credits_sum=0)
-    ## uncomment, if students that did not hand in a solution only to this sheet, should not be considered:
-    #consider_students = Student.objects.annotate( credits_sum=Sum('result__credits', filter=(Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)) ) ).exclude(credits_sum=0).order_by('pk')
-    cs_pk = consider_students.values_list('pk' ,flat=True)
-    print ("I consider the following students for sheet No{}:".format(sh.number))
-    for _is in consider_students:
-      print ("\t(id{}) {} {}: {:.2f}".format(_is.pk, _is.name, _is.surname, _is.credits_sum))
+    consider_students = Student.objects.annotate( credits_sum=Sum('result__credits', filter=(Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)) ) ).exclude(credits_sum=0).order_by('pk')
+    cs_pk = list(consider_students.values_list('pk' ,flat=True))
+#    print ("I consider the following students for sheet No{}:".format(sh.number))
+#    for _is in consider_students:
+#      print ("\t(id{}) {} {}: {:.2f}".format(_is.pk, _is.name, _is.surname, _is.credits_sum))
     for eg in exgroups:
-      #avg = Avg('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) & Q(result__student__in=consider_students) ))
-      #stddev = StdDev('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__in=consider_students) ))
-      #csum = Sum('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__in=consider_students) ))
       avg = Avg('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False) & Q(result__student__pk__in=cs_pk) ))
-      stddev = StdDev('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__pk__in=cs_pk) ))
+      stddev = StdDev('result__credits', sample=False, output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__pk__in=cs_pk) ))
       csum = Sum('result__credits', output_field=FloatField(), filter=( Q(result__student__exgroup=eg) & Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)  & Q(result__student__pk__in=cs_pk) ))
       errp = F('avg')+F('stddev')
       errn = F('avg')-F('stddev')
@@ -532,9 +550,22 @@ def stats_detail(request):
       shs[-1]['exgroups'][-1]['number']=eg.number
       shs[-1]['exgroups'][-1]['tutor']=eg.tutor.last_name
       shs[-1]['exgroups'][-1]['exercises']=ex
+      _low, _high, _avg = 0,0,0
+      totavg = Avg('credits', filter=( Q(student__exgroup=eg) & Q(exercise__sheet=sh.number)  & Q(credits__isnull=False)  & Q(student__pk__in=cs_pk)) )
+      _ta = Result.objects.aggregate(totavg=totavg)
+      _ta = _ta['totavg']
+      totstd = StdDev('credits', sample=False, filter=( Q(student__exgroup=eg) & Q(exercise__sheet=sh.number)  & Q(credits__isnull=False)  & Q(student__pk__in=cs_pk)) )
+      _ts = Result.objects.aggregate(totstd=totstd)
+      _ts = _ts['totstd']
+      if _ta and _ts:
+        _low = _ta - _ts
+        _high = _ta + _ts
+        _avg = _ta
+
+      shs[-1]['exgroups'][-1]['total']={'low':_low, 'high':_high, 'avg':_avg}
 
 
-  print ("Query done. Trying to render now ...")
+#  print ("Query done. Trying to render now ...")
   context = {'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),

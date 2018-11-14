@@ -65,29 +65,20 @@ class AssignPresenceForm(forms.ModelForm):
     fields = ('student', 'sheet', 'present')
 
 
-
-
-
 class EditStudentForm(forms.ModelForm):
-
   def __init__(self, *args, **kwargs):
     user = kwargs.pop('user', None)
     super(EditStudentForm, self).__init__(*args, **kwargs)
-#    if 'instance' in kwargs and kwargs['instance']:
-#      ## in this case we selected a student and exercise sheet -> fix them in the form
-#      _students = Student.objects.filter(id=kwargs['instance'].student.id)
-#      _sheet = Sheet.objects.filter(id=kwargs['instance'].sheet.id)
-#      self.fields['student'].queryset = _students
-#      self.fields['student'].initial = _students
-#      self.fields['sheet'].queryset = _sheet
-#      self.fields['sheet'].initial = _sheet
-#
-#    else:
-#      if user:
-#        _students = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=user)
-#        self.fields['student'].queryset = _students
-#        self.fields['student'].initial = _students
 
   class Meta:
     model = Student
     fields = ('email', )
+
+
+class EditStudentFullForm(forms.ModelForm):
+  def __init__(self, *args, **kwargs):
+    super(EditStudentFullForm, self).__init__(*args, **kwargs)
+
+  class Meta:
+    model = Student
+    fields = ('name', 'surname', 'exgroup', 'studentID','email', )
