@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
+#import logging.config
+#from django.utils.log import DEFAULT_LOGGING
+#LOGGING_CONFIG = None
+#LOGLEVEL = os.environ.get('LOGLEVEL', 'info').upper()
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -117,6 +122,57 @@ DATABASES = {
 
 }
 
+##LOGGING = {
+#logging.config.dictConfig({
+#    'version': 1,
+#    'disable_existing_loggers': False,
+#    'formatters': {
+#        'default': {
+#            # exact format is not important, this is the minimum information
+#            'format': '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+#        },
+#        'django.server': DEFAULT_LOGGING['formatters']['django.server'],
+#    },
+#    'handlers': {
+#        'file': {
+#            'level': 'DEBUG',
+#            'class': 'logging.FileHandler',
+#            'filename': os.path.join(BASE_DIR, 'logfiles/debug.log'), #'/path/to/django/debug.log',
+#        },
+#				'console': {
+#						'level': 'DEBUG',
+#            'class': 'logging.StreamHandler'
+#        },
+#        'django.server': DEFAULT_LOGGING['handlers']['django.server'],
+#    },
+#    'loggers': {
+#        # default for all undefined Python modules
+#        '': {
+#            'level': 'WARNING',
+#            'handlers': ['console', 'file'],
+#        },
+#        # Our application code
+#        'tutorsbase': {
+#            'level': LOGLEVEL,
+#            'handlers': ['console', 'file'],
+#            # Avoid double logging because of root logger
+#            'propagate': False,
+#        },
+#        # Prevent noisy modules from logging to Sentry
+#        'noisy_module': {
+#            'level': 'ERROR',
+#            'handlers': ['console'],
+#            'propagate': False,
+#        },
+##        'django': {
+##            'handlers': ['file'],
+##            'level': 'DEBUG',
+##            'propagate': True,
+##        },
+#        # Default runserver request logging
+#        'django.server': DEFAULT_LOGGING['loggers']['django.server'],
+#    },
+#})
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators

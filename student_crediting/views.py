@@ -21,6 +21,9 @@ from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
 from django.db.models import FloatField
 import numpy as np
 
+#import logging
+#logger = logging.getLogger(__name__)
+
 #CURRENT_EVENT = 'Experimental Physics I'
 CURRENT_EVENT = settings.CURRENT_EVENT
 
@@ -147,7 +150,7 @@ def send_mail_to_student(request):
       body += "\n\nLiebe Grüße\nDein Ex1-Team"
       to = (student.email, )
       #bcc = list( User.objects.filter(is_superuser=True).values_list('email', flat=True) )
-      bcc = settings.BCC_MAILTO
+      bcc = settings.BCC_MAILTO.copy()  ## IMPORTANT! Otherwise it calls by reference and fills BCC_MAILTO with names until everyone receives status emails
       bcc.append(student.exgroup.tutor.email)
       email = EmailMessage(subject=subject, body=body, to=to, bcc=bcc)
       email.send()
