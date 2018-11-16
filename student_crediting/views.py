@@ -150,10 +150,12 @@ def send_mail_to_student(request):
       body += "\n\nLiebe Grüße\nDein Ex1-Team"
       to = (student.email, )
       #bcc = list( User.objects.filter(is_superuser=True).values_list('email', flat=True) )
+      bcc = 0
       bcc = settings.BCC_MAILTO.copy()  ## IMPORTANT! Otherwise it calls by reference and fills BCC_MAILTO with names until everyone receives status emails
       bcc.append(student.exgroup.tutor.email)
       email = EmailMessage(subject=subject, body=body, to=to, bcc=bcc)
       email.send()
+      return 0
 
 
 @login_required
