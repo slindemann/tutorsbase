@@ -155,6 +155,7 @@ def send_mail_to_student(request):
       bcc.append(student.exgroup.tutor.email)
       email = EmailMessage(subject=subject, body=body, to=to, bcc=bcc)
       email.send()
+      #print ("***********bcc = ", bcc)
       return 0
 
 
