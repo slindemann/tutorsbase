@@ -279,9 +279,14 @@ def students(request):
     student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
   student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
                                        bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
-                                       credits_sum_perc=100*F('credits_sum')/sum_credits['total_credits'],
-                                       bonus_credits_sum_perc=100*F('bonus_credits_sum')/sum_credits['total_bonus_credits'],
+                                       credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
+                                       bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
                                        ).order_by('exgroup__number','surname')
+#  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
+#                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
+#                                       credits_sum_perc=100*F('credits_sum')/sum_credits['total_credits'],
+#                                       bonus_credits_sum_perc=100*F('bonus_credits_sum')/sum_credits['total_bonus_credits'],
+#                                       ).order_by('exgroup__number','surname')
 
   context = {#'form': form,
              'student_list': student_list,
