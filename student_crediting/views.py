@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.core.exceptions import PermissionDenied
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, send_mail
 
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -21,10 +21,6 @@ from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
 from django.db.models import FloatField
 import numpy as np
 
-#import logging
-#logger = logging.getLogger(__name__)
-
-#CURRENT_EVENT = 'Experimental Physics I'
 CURRENT_EVENT = settings.CURRENT_EVENT
 
 
@@ -73,7 +69,6 @@ def config_read():
 
 @login_required
 def give_credit(request, credit_pk=None):
-#  current_event = 'Experimental Physics I'
   _config = config_read()
   if credit_pk:
     instance = get_object_or_404(Result, pk=credit_pk)
@@ -118,8 +113,12 @@ def send_mail_to_student(request):
     elif 'sheet' in request.POST:
       this_sheet = get_object_or_404(Sheet, pk=request.POST['sheet'])
       this_sheetno = this_sheet.number
-    total_credits_achieved = Sum('result__credits', filter=Q(result__exercise__sheet__number__lte=this_sheetno))
-    student = Student.objects.annotate(num_graded=Count('id', filter=Q(result__exercise__sheet=this_sheet))).annotate(total_credits_achieved=total_credits_achieved).get(pk=request.POST['student'])
+    #total_credits_achieved = Sum('result__credits', filter=Q(result__exercise__sheet__number__lte=this_sheetno))
+    total_credits_achieved = Sum('result__credits', filter=(Q(result__exercise__sheet__number__lte=this_sheetno)&(~Q(result__blackboard='-'))))
+    num_bbp = Count('result__blackboard', filter=(Q(result__exercise__sheet__number__lte=this_sheetno)&Q(result__blackboard='+')))
+    num_bbo = Count('result__blackboard', filter=(Q(result__exercise__sheet__number__lte=this_sheetno)&Q(result__blackboard='o')))
+    num_bbm = Count('result__blackboard', filter=(Q(result__exercise__sheet__number__lte=this_sheetno)&Q(result__blackboard='-')))
+    student = Student.objects.annotate(num_graded=Count('id', filter=Q(result__exercise__sheet=this_sheet))).annotate(total_credits_achieved=total_credits_achieved).annotate(num_bbp=num_bbp).annotate(num_bbo=num_bbo).annotate(num_bbm=num_bbm).get(pk=request.POST['student'])
     if not student.email:
       print ("ERROR: Student's email missing. Will not send status update.")
       return 1
@@ -130,7 +129,7 @@ def send_mail_to_student(request):
     presence = Presence.objects.filter(sheet=sheet, student=student).values_list('present', flat=True)
     presence_assigned = len(presence)==1
     if presence_assigned and (student.num_graded==sheet.num_exercises):
-      results = Result.objects.filter(exercise__sheet=sheet, student=student)
+      results = Result.objects.filter(exercise__sheet=sheet, student=student).order_by('exercise__number')
       if presence[0]:
         presence_string = 'ja' 
       else: 
@@ -144,17 +143,51 @@ def send_mail_to_student(request):
           body += " (Tafel: '{}')".format(res.blackboard)
         body += "\n"
       tutorials_missed = 2
-      body += "\nDein aktueller Punktestand ist {:.1f}/{:.1f}. Du hast {} mal im Tutorat gefehlt.\n".format(student.total_credits_achieved, credits_possible['credits_possible'], eg['tutorials_missed'])
+      body += "\nDein aktueller Punktestand ist {:.1f}/{:.0f}. Du hast {} mal im Tutorat gefehlt.\n".format(student.total_credits_achieved, credits_possible['credits_possible'], eg['tutorials_missed'])
+      nm = student.num_bbm
+      no = student.num_bbo
+      np = student.num_bbp
+      nbb = nm+no+np
+      body += "Du hast {} mal an der Tafel vorgerechnet".format(nbb)
+      if nbb:
+        body += " ("
+        _b = []
+        if nm:
+          _b.append("'-': {} mal".format(nm))
+        if no:
+          _b.append("'o': {} mal".format(no))
+        if np:
+          _b.append("'+': {} mal".format(np))
+        body += ', '.join(_b)
+        body += ")"
+      body += ".\n"
+
 
       body += "\nDiese Email wurde automatisch erstellt.\nBitte wende dich bei Unklarheiten an deinen Tutor {} {}.".format(student.exgroup.tutor.first_name, student.exgroup.tutor.last_name)
       body += "\n\nLiebe Grüße\nDein Ex1-Team"
       to = (student.email, )
       #bcc = list( User.objects.filter(is_superuser=True).values_list('email', flat=True) )
-      bcc = 0
-      bcc = settings.BCC_MAILTO.copy()  ## IMPORTANT! Otherwise it calls by reference and fills BCC_MAILTO with names until everyone receives status emails
-      bcc.append(student.exgroup.tutor.email)
+      bcc = [student.exgroup.tutor.email,]
+      for bm in settings.BCC_MAILTO:
+        bcc.append(bm)
+      #bcc = 0
+      #bcc = settings.BCC_MAILTO.copy()  ## IMPORTANT! Otherwise it calls by reference and fills BCC_MAILTO with names until everyone receives status emails
+      #bcc.append(student.exgroup.tutor.email)
       email = EmailMessage(subject=subject, body=body, to=to, bcc=bcc)
       email.send()
+
+      if True or settings.DEBUG_MAIL:
+        dbmessage = 40*'^'+'\n' 
+        dbmessage += 'To: {}\nFrom: {}\nBcc: {}\nSubject: {}\nBody:\n{}'.format(to, settings.DEFAULT_FROM_EMAIL, bcc, subject, body)
+        dbmessage += '\n'+40*'^' 
+        send_mail(
+            subject='Debug Mail',
+            message=dbmessage,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.BCC_MAILTO,],
+            fail_silently=True,
+        )
+      #bcc.append(str(np.random.rand(1)[0]))
       #print ("***********bcc = ", bcc)
       return 0
 
@@ -239,18 +272,17 @@ def exercise_sheets(request):
 
 @login_required
 def students(request):
-#  current_event = 'Experimental Physics I'
-#  current_user = request.user
   sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
     student_list = Student.objects.all()
   else:
     student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
-  student_list = student_list.annotate(credits_sum=Sum('result__credits'), 
-                                          bonus_credits_sum=Sum('result__bonus_credits'), 
-                                          credits_sum_perc=100*Sum('result__credits')/sum_credits['total_credits'],
-                                          bonus_credits_sum_perc=100*Sum('result__bonus_credits')/sum_credits['total_bonus_credits'],
-                                          ).order_by('exgroup__number','surname')
+  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
+                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
+                                       credits_sum_perc=100*F('credits_sum')/sum_credits['total_credits'],
+                                       bonus_credits_sum_perc=100*F('bonus_credits_sum')/sum_credits['total_bonus_credits'],
+                                       ).order_by('exgroup__number','surname')
+
   context = {#'form': form,
              'student_list': student_list,
              'lecture': CURRENT_EVENT,
@@ -263,8 +295,6 @@ def students(request):
 
 @login_required
 def student_details(request, student_pk):
-#  current_event = 'Experimental Physics I'
-#  current_user = request.user
   student = Student.objects.select_related('exgroup__tutor').get(pk=student_pk)
   exercises = Exercise.objects.select_related('sheet')
   presence = Presence.objects.filter(student=student_pk)
@@ -368,15 +398,9 @@ def give_presence(request, student_pk, sheet_no):
 
 @login_required
 def edit_presence(request, presence_pk=None):
-#  current_event = 'Experimental Physics I'
-#  current_user = request.user
   if presence_pk:
     instance = get_object_or_404(Presence, pk=presence_pk)
-#    ex_credits = instance.exercise.credits
-#    ex_bonus_credits = instance.exercise.bonus_credits
-#    mvs={'credits':ex_credits, 'bonus_credits':ex_bonus_credits}
   else:
-#    mvs=None
     instance=None
   form = AssignPresenceForm(request.POST or None, instance=instance, user=request.user)
   if form.is_valid():
@@ -384,16 +408,12 @@ def edit_presence(request, presence_pk=None):
     if student.exgroup.tutor == request.user or request.user.is_staff:
       # only staff and assigned tutor(s) are allowed to edit
       sc = form.save(commit=False)
-  #    sc.edited_by = request.user
-  #    sc.last_modified = timezone.now()
       sc.save()
       send_mail_to_student(request)
       return redirect('student_details', sc.student.id)
     else:
       raise PermissionDenied("Permission denied.")
   else:
-#    messages.error(request, 'Please correct the error below.')
-
     context = {'form': form,
                'lecture': CURRENT_EVENT,
                'logged_user': request.user,
@@ -533,7 +553,7 @@ def stats_detail(request):
   for sh in sheets:
     shs.append({})
     shs[-1]['number'] = sh.number
-    shs[-1]['exercises'] = Exercise.objects.filter(sheet=sh)
+    shs[-1]['exercises'] = Exercise.objects.filter(sheet=sh).order_by('number')
     shs[-1]['deadline'] = sh.deadline
     shs[-1]['exgroups'] = []
     exgroups = ExGroup.objects.exclude(number=10).order_by('number')
@@ -570,8 +590,6 @@ def stats_detail(request):
 
       shs[-1]['exgroups'][-1]['total']={'low':_low, 'high':_high, 'avg':_avg}
 
-
-#  print ("Query done. Trying to render now ...")
   context = {'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
