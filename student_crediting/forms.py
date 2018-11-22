@@ -1,4 +1,6 @@
 from django import forms
+from django.forms import ModelForm
+from django.contrib.admin.widgets import AdminDateWidget
 
 from .models import Result, Student, Exercise, Presence, Sheet
 
@@ -82,3 +84,27 @@ class EditStudentFullForm(forms.ModelForm):
   class Meta:
     model = Student
     fields = ('name', 'surname', 'exgroup', 'studentID','email', )
+
+
+
+
+
+class DateInput(forms.DateInput):
+   input_type = 'date'
+# 
+# class DateTimeInput(forms.DateTimeInput):
+#   input_type = 'datetime'
+
+class EditSheetForm(forms.ModelForm):
+
+  class Meta:
+    model = Sheet
+    fields = ('number', 'deadline', 'link_sheet', 'link_solution' )
+    widgets = {
+      'deadline': DateInput(),
+      #'deadline': forms.DateInput(attrs={'class': 'datetime-input'}),
+      #'deadline': forms.DateInput(attrs={'id': 'datetimepicker1'}),
+      #'deadline': AdminDateWidget(),
+    }
+
+

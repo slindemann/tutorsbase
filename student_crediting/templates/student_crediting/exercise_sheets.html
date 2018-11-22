@@ -8,12 +8,18 @@
   <table class="w3-table-all w3-hoverable w3-card-4">
     <tr>
         <th> Sheet </th>
+        <th> Due date </th>
         <th> Exercises </th>
         <th> Solutions </th>
     </tr>
     {% for sheet in results %}
     <tr>
+        {% if request.user.is_staff %}
+        <td> <a href="{% url 'edit_sheet' sheet.number %}" class="mylink">No{{sheet.number}}</a> </td>
+        {% else %}
         <td> No{{sheet.number}} </td>
+        {% endif %}
+        <td> {{ sheet.deadline|date:"D, n M (gA)" }} </td>
         <td> <a href="{{sheet.link_sheet}}" class="mylink">Link</a> </td>
 {% comment %}
         <td>{% if sheet.exercises_to_be_graded == sheet.exercises_graded and sheet.presences_to_be_assigned == sheet.presences_assigned or request.user.is_staff %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
@@ -24,6 +30,11 @@
                <div class="absent"> Not available yet </div>
             {% endif %}
     {% endfor %}
+    </tr>
+    <tr>
+        <td>
+            <a href="{% url 'students' %}" class="mylink">new sheet</a>
+        </td>
     </tr>
   </table>
   <p>

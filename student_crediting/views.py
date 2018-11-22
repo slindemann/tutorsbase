@@ -12,7 +12,7 @@ from django.core.mail import EmailMessage, send_mail
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
-from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm
+from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm, EditSheetForm
 from django.utils import timezone
 
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
@@ -215,6 +215,7 @@ def exercise_sheets(request):
       #print ("{} has {} exercises".format(sh, sh.num_exercises))
       result_sheet.append({})
       result_sheet[-1]['number'] = sh.number
+      result_sheet[-1]['deadline'] = sh.deadline
       result_sheet[-1]['num_exercises'] = sh.num_exercises
       result_sheet[-1]['exercises_to_be_graded'] = sh.num_exercises*nstudents
       result_sheet[-1]['presences_to_be_assigned'] = nstudents
@@ -223,7 +224,7 @@ def exercise_sheets(request):
 
     ## step 3)
     students = Student.objects.filter(exgroup__tutor=request.user)
-    print (students)
+    #print (students)
     _gc = True
     for sh in result_sheet:
       ## we always want to show the solutions to one exercise sheet in advance compared to what the tutors entered in the database
@@ -253,6 +254,7 @@ def exercise_sheets(request):
     for sh in sheets:
       result_sheet.append({})
       result_sheet[-1]['number'] = sh.number
+      result_sheet[-1]['deadline'] = sh.deadline
       result_sheet[-1]['show_solutions'] = True
       result_sheet[-1]['link_sheet'] = sh.link_sheet
       result_sheet[-1]['link_solution'] = sh.link_solution
@@ -426,6 +428,27 @@ def edit_presence(request, presence_pk=None):
                }
 
     return render(request, 'student_crediting/assign_presence.html', context)
+
+@login_required
+def edit_sheet(request, sheet_pk=None):
+  if not sheet_pk or not request.user.is_staff:
+      raise PermissionDenied("Permission denied.")
+  instance = get_object_or_404(Sheet, pk=sheet_pk)
+  form = EditSheetForm(request.POST or None, instance=instance)
+  if form.is_valid():
+    sc = form.save(commit=False)
+    sc.save()
+    return redirect('exercise_sheets')
+  else:
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+
+    return render(request, 'student_crediting/edit_sheet.html', context)
+
+ 
 
 
 @login_required
