@@ -46,6 +46,107 @@
         ]
 	});
   </script>
+
+  <br>
+  <div id="overview"></div>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script>
+      Highcharts.chart('overview', {
+        chart: {
+            type: 'columnrange',
+            //inverted: true
+        },
+        title: {
+            text: ''
+        },
+        credits: {
+            enabled: false
+        },
+        xAxis: {
+            categories: [
+                {% for eg in egroup %}
+                'G{{eg.number}} ({{eg.tutor.last_name}})',
+                {% endfor %}
+                  ]
+        },
+        yAxis: {
+            title: { text: 'Avg +/- StdDev [Credits]' },
+            min: -1,
+            max: 11,
+        },
+        tooltip:{
+            formatter: function() {
+                var s = "<div style='font-size: smaller;'>"+ this.x +"</div>";
+                return s += '<br/><span style="color:' + this.point.color + '">\u25CF</span> '+ 'Avg: <b>' + this.point.avg + '</b> (' + this.point.low + ', ' + this.point.high + ')';
+            },
+            outside: true,
+            hideDelay: 50,
+        },
+        series: [
+            {
+            name: 'all data',
+            data: [
+            {% for eg in egroup %}
+               {% if eg.errn and eg.errp %}
+                {  low:  {{eg.errn|floatformat:-2}},
+                   high: {{eg.errp|floatformat:-2}},
+                   avg : {{eg.avg|floatformat:-1}},
+                },
+               {% else %}
+                {
+                    low: 0,
+                    high: 0,
+                    avg: 0,
+                },
+               {% endif %}
+            {% endfor %}
+                 ],
+            },
+            {
+            name: 'ignore zero credits',
+            data: [
+            {% for eg in egroup %}
+               {% if eg.errn_iz and eg.errp_iz %}
+                {  low:  {{eg.errn_iz|floatformat:-2}},
+                   high: {{eg.errp_iz|floatformat:-2}},
+                   avg : {{eg.avg_iz|floatformat:-1}},
+                },
+               {% else %}
+                {
+                    low: 0,
+                    high: 0,
+                    avg: 0,
+                },
+               {% endif %}
+            {% endfor %}
+                 ],
+            },
+            {
+            name: 'ignore zero and ten credits',
+            data: [
+            {% for eg in egroup %}
+               {% if eg.errn_izt and eg.errp_izt %}
+                {  low:  {{eg.errn_izt|floatformat:-2}},
+                   high: {{eg.errp_izt|floatformat:-2}},
+                   avg : {{eg.avg_izt|floatformat:-1}},
+                },
+               {% else %}
+                {
+                    low: 0,
+                    high: 0,
+                    avg: 0,
+                },
+               {% endif %}
+            {% endfor %}
+                 ],
+            },
+
+        ],
+    });
+  </script>
   </div>
 {% endblock %}
 

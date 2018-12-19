@@ -125,20 +125,24 @@ class EditSheetForm(forms.Form):
   deadline_time = forms.TimeField(required=True, label="Time")
   link_sheet = forms.CharField(required=False, label='Link to Sheet')
   link_solution = forms.CharField(required=False, label='Link to Solution')
+  create_exercises = forms.BooleanField(required=False, help_text="Automatically create 4 Exercises, 10 credits each")
 
   def __init__(self, *args, **kwargs):
-    instance = kwargs.pop('instance', None)
+    self.instance = kwargs.pop('instance', None)
     super(EditSheetForm, self).__init__(*args, **kwargs)
 
-    if instance:
+    if self.instance:
       ## in this case we selected a student and exercise sheet -> fix them in the form
-      _sheet = instance
+      _sheet = self.instance
       self.fields['number'].initial = _sheet.number
       self.fields['number'].disabled = True
       self.fields['deadline_day'].initial = _sheet.deadline
       self.fields['deadline_time'].initial = timezone.localtime(_sheet.deadline) # important to show localtime in field!
       self.fields['link_sheet'].initial = _sheet.link_sheet
       self.fields['link_solution'].initial = _sheet.link_solution
+      self.fields['create_exercises'].initial = False
+      self.fields['create_exercises'].disabled = True
+      self.fields['create_exercises'].widget = forms.HiddenInput()
     else:
       self.fields['deadline_time'].initial = '10:15:00'
       self.fields['number'].initial = list(Sheet.objects.all().order_by('number').values_list('number', flat=True))[-1]+1
@@ -146,5 +150,7 @@ class EditSheetForm(forms.Form):
       self.fields['deadline_day'].initial = timezone.localtime()
       self.fields['link_sheet'].initial = ''
       self.fields['link_solution'].initial = ''
+      self.fields['create_exercises'].initial = False
+      self.fields['create_exercises'].disabled = False
 
 

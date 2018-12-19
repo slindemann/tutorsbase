@@ -309,7 +309,7 @@ def student_details(request, student_pk):
   for iex, ex in enumerate(exercises):
     if not ex.sheet.number in sheets_meta:
       sheets_meta[ex.sheet.number] = {}
-      _ispres = presence.filter(sheet=ex.sheet.number)
+      _ispres = presence.filter(sheet__number=ex.sheet.number)
       if _ispres:
         sheets_meta[ex.sheet.number]['presence'] = _ispres[0]
       else:
@@ -451,6 +451,11 @@ def edit_sheet(request, sheet_pk=None):
     _dl = pytz.timezone("Europe/Berlin").localize(naive, is_dst=None)
     sheet.deadline = _dl
     sheet.save()
+    if request.POST['create_exercises']:
+      #print ("creating exercises...")
+      for exid in (1,2,3,4):
+        _ex = Exercise(number=exid, sheet=sheet, credits=10, bonus_credits=0)
+        _ex.save()
     return redirect('exercise_sheets')
   else:
     context = {'form': form,
@@ -518,30 +523,30 @@ def edit_student_full(request, student_pk=None):
 
 
 
-@login_required
-def show_stats(request):
-  if not request.user.is_staff:
-    raise PermissionDenied("Permission denied.")
-  else:
-    results = Result.objects.select_related('student__exgroup__tutor').all()
-    credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
-    for egroup in ExGroup.objects.select_related('tutor').all():
-      credit_values.append({})
-      credit_values[-1]['tutor'] = egroup.tutor.last_name
-      credit_values[-1]['group'] = egroup.id
-      for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
-        print (fl)
-      try:
-        credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
-      except:
-        pass
-
-    context = {'lecture': CURRENT_EVENT,
-               'logged_user': request.user,
-               'config': config_read(),
-               'credit_values': credit_values,
-               }
-    return render(request, 'student_crediting/statistics.html', context)
+# @login_required
+# def show_stats(request):
+#   if not request.user.is_staff:
+#     raise PermissionDenied("Permission denied.")
+#   else:
+#     results = Result.objects.select_related('student__exgroup__tutor').all()
+#     credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
+#     for egroup in ExGroup.objects.select_related('tutor').all():
+#       credit_values.append({})
+#       credit_values[-1]['tutor'] = egroup.tutor.last_name
+#       credit_values[-1]['group'] = egroup.id
+#       for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True):
+#         print (fl)
+#       try:
+#         credit_values[-1]['data'] = [float(fl) for fl in results.filter(student__exgroup=egroup).values_list('credits', flat=True)]
+#       except:
+#         pass
+# 
+#     context = {'lecture': CURRENT_EVENT,
+#                'logged_user': request.user,
+#                'config': config_read(),
+#                'credit_values': credit_values,
+#                }
+#     return render(request, 'student_crediting/statistics.html', context)
 
 
 @login_required
@@ -550,6 +555,8 @@ def stats_overview(request):
     raise PermissionDenied("Permission denied.")
   else:
     consider_students = Student.objects.annotate(credits_sum=Sum('result__credits')).exclude(credits_sum=0)
+    #consider_students = Student.objects.annotate( credits_sum=Sum('result__credits', filter=(Q(result__exercise__sheet=sh) & Q(result__credits__isnull=False)) ) ).exclude(credits_sum=0).order_by('pk')
+    cs_pk = list(consider_students.values_list('pk' ,flat=True))
     #results = Result.objects.select_related('student__exgroup__tutor').all()
     results = Result.objects.select_related('student__exgroup__tutor').filter(student__in=consider_students)
     credit_values = [] # [float(fl) for fl in results.values_list('credits', flat=True)]
@@ -578,10 +585,32 @@ def stats_overview(request):
         eg['edges'] = _edges
         #print ("G{}: data={}, hist={}, edges={}".format(eg['group'],eg['data'],eg['hist'],eg['edges']))
 
+
+#####
+## collect data for 2nd plot: average and spread of result per group/tutor
+    avg = Avg('student__result__credits', output_field=FloatField(), filter=( Q(student__result__credits__isnull=False) & Q(student__pk__in=cs_pk) ))
+    stddev = StdDev('student__result__credits', sample=False, output_field=FloatField(), filter=( Q(student__result__credits__isnull=False)  & Q(student__pk__in=cs_pk) ))
+    avg_iz = Avg('student__result__credits', output_field=FloatField(), filter=( Q(student__result__credits__isnull=False) & Q(student__pk__in=cs_pk) & Q(student__result__credits__gt=0) ))
+    stddev_iz = StdDev('student__result__credits', sample=False, output_field=FloatField(), filter=( Q(student__result__credits__isnull=False)  & Q(student__pk__in=cs_pk)  & Q(student__result__credits__gt=0)))
+    avg_izt = Avg('student__result__credits', output_field=FloatField(), filter=( Q(student__result__credits__isnull=False) & Q(student__pk__in=cs_pk) & Q(student__result__credits__gt=0)  & Q(student__result__credits__lt=10)))
+    stddev_izt = StdDev('student__result__credits', sample=False, output_field=FloatField(), filter=( Q(student__result__credits__isnull=False)  & Q(student__pk__in=cs_pk)  & Q(student__result__credits__gt=0)  & Q(student__result__credits__lt=10) ))
+    errp = F('avg')+F('stddev')
+    errn = F('avg')-F('stddev')
+    errp_iz = F('avg_iz')+F('stddev_iz')
+    errn_iz = F('avg_iz')-F('stddev_iz')
+    errp_izt = F('avg_izt')+F('stddev_izt')
+    errn_izt = F('avg_izt')-F('stddev_izt')
+    egroup = ExGroup.objects.select_related('tutor').exclude(number=10).order_by('number').annotate(avg=avg, avg_iz=avg_iz, avg_izt=avg_izt, stddev=stddev, errp=errp, errn=errn, stddev_iz=stddev_iz, errp_iz=errp_iz, errn_iz=errn_iz, stddev_izt=stddev_izt, errp_izt=errp_izt, errn_izt=errn_izt)
+    if settings.DEBUG:
+      for eg in egroup:
+        print ("ExGroup {}: Avg={:.1f}, Stddev={:.1f}".format(eg.number, eg.avg, eg.stddev))
+
+
     context = {'lecture': CURRENT_EVENT,
                'logged_user': request.user,
                'config': config_read(),
                'credit_values': credit_values,
+               'egroup': egroup,
                }
     return render(request, 'student_crediting/statistics_overview.html', context)
 

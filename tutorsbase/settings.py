@@ -54,6 +54,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # During devel
 CURRENT_EVENT = 'Experimental Physics I'
 BCC_MAILTO = ['laurel@har.dy', ]
 SEND_CREDIT_UPDATES_TO_STUDENTS = True
+DEBUG_MAIL = False
 ##
 #######################
 
