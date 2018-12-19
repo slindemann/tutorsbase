@@ -14,12 +14,16 @@ from django.conf import settings
 
 from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm, EditSheetForm
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+import pytz
 
 from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
 
 from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
 from django.db.models import FloatField
 import numpy as np
+import datetime as dt
+import time
 
 CURRENT_EVENT = settings.CURRENT_EVENT
 
@@ -166,17 +170,13 @@ def send_mail_to_student(request):
       body += "\nDiese Email wurde automatisch erstellt.\nBitte wende dich bei Unklarheiten an deinen Tutor {} {}.".format(student.exgroup.tutor.first_name, student.exgroup.tutor.last_name)
       body += "\n\nLiebe Grüße\nDein Ex1-Team"
       to = (student.email, )
-      #bcc = list( User.objects.filter(is_superuser=True).values_list('email', flat=True) )
       bcc = [student.exgroup.tutor.email,]
       for bm in settings.BCC_MAILTO:
         bcc.append(bm)
-      #bcc = 0
-      #bcc = settings.BCC_MAILTO.copy()  ## IMPORTANT! Otherwise it calls by reference and fills BCC_MAILTO with names until everyone receives status emails
-      #bcc.append(student.exgroup.tutor.email)
       email = EmailMessage(subject=subject, body=body, to=to, bcc=bcc)
       email.send()
 
-      if True or settings.DEBUG_MAIL:
+      if settings.DEBUG_MAIL:
         dbmessage = 40*'^'+'\n' 
         dbmessage += 'To: {}\nFrom: {}\nBcc: {}\nSubject: {}\nBody:\n{}'.format(to, settings.DEFAULT_FROM_EMAIL, bcc, subject, body)
         dbmessage += '\n'+40*'^' 
@@ -187,8 +187,6 @@ def send_mail_to_student(request):
             recipient_list=[settings.BCC_MAILTO,],
             fail_silently=True,
         )
-      #bcc.append(str(np.random.rand(1)[0]))
-      #print ("***********bcc = ", bcc)
       return 0
 
 
@@ -274,7 +272,8 @@ def exercise_sheets(request):
 
 @login_required
 def students(request):
-  sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+  #sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+  sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
     student_list = Student.objects.all()
   else:
@@ -431,13 +430,27 @@ def edit_presence(request, presence_pk=None):
 
 @login_required
 def edit_sheet(request, sheet_pk=None):
-  if not sheet_pk or not request.user.is_staff:
-      raise PermissionDenied("Permission denied.")
-  instance = get_object_or_404(Sheet, pk=sheet_pk)
-  form = EditSheetForm(request.POST or None, instance=instance)
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied.")
+  if sheet_pk:
+    sheet = get_object_or_404(Sheet, number=sheet_pk)
+  else:
+    ## create new sheet
+    sheet = None
+  form = EditSheetForm(request.POST or None, instance=sheet)
   if form.is_valid():
-    sc = form.save(commit=False)
-    sc.save()
+#    print ("*******************")
+#    print("request.POST:", request.POST)
+#    print ("*******************")
+    if not sheet:
+      sheet = Sheet()
+      sheet.number = request.POST['number']
+    sheet.link_sheet = request.POST['link_sheet']
+    sheet.link_solution = request.POST['link_solution']
+    naive = parse_datetime("{} {}".format(request.POST['deadline_day'], request.POST['deadline_time']))
+    _dl = pytz.timezone("Europe/Berlin").localize(naive, is_dst=None)
+    sheet.deadline = _dl
+    sheet.save()
     return redirect('exercise_sheets')
   else:
     context = {'form': form,

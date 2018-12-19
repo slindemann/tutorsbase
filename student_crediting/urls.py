@@ -29,7 +29,8 @@ urlpatterns = [
     url(r'^stats_detail/$', views.stats_detail, name='stats_detail'),
 #
     url(r'^exercises/sheets$', views.exercise_sheets, name='exercise_sheets'),
-    path('exercises/sheet/<int:sheet_pk>/', views.edit_sheet, name='edit_sheet'),
+    path('exercises/sheets/<int:sheet_pk>/', views.edit_sheet, name='edit_sheet'),
+    path('exercises/sheets/new/', views.edit_sheet, name='new_sheet'),
 #
     path('exgroup/<int:exgroup_pk>/', views.exgroup_details, name='exgroup_details'),
 #

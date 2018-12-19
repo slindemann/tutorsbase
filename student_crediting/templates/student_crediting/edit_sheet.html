@@ -3,7 +3,11 @@
 {% block content %}
 
   <div class="w3-container w3-margin-left">
-    <h1>Edit sheet No {{ form.instance.number  }}:</h1>
+    {% if form.instance.number %}
+      <h1>Edit sheet No {{ form.instance.number  }}:</h1>
+    {% else %}
+      <h1>Create new sheet</h1>
+    {% endif %}
     <form method="POST" class="post-form">{% csrf_token %}
         {{ form.as_p }}
         <button type="submit" class="save btn btn-default">Save</button>

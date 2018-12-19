@@ -1,9 +1,6 @@
 {% extends 'student_crediting/base.html' %}
 
 {% block content %}
-{% comment %}
-  <h1>Download Exercises and Solutions </h1>
-{% endcomment %}
 
   <table class="w3-table-all w3-hoverable w3-card-4">
     <tr>
@@ -15,25 +12,22 @@
     {% for sheet in results %}
     <tr>
         {% if request.user.is_staff %}
-        <td> <a href="{% url 'edit_sheet' sheet.number %}" class="mylink">No{{sheet.number}}</a> </td>
+          <td> <a href="{% url 'edit_sheet' sheet.number %}" class="mylink">No{{sheet.number}}</a> </td>
         {% else %}
-        <td> No{{sheet.number}} </td>
+          <td> No{{sheet.number}} </td>
         {% endif %}
-        <td> {{ sheet.deadline|date:"D, n M (gA)" }} </td>
-        <td> <a href="{{sheet.link_sheet}}" class="mylink">Link</a> </td>
-{% comment %}
-        <td>{% if sheet.exercises_to_be_graded == sheet.exercises_graded and sheet.presences_to_be_assigned == sheet.presences_assigned or request.user.is_staff %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
-{% endcomment %}
+        <td> {{ sheet.deadline|date:"D, j M (f A)" }} </td>
+        <td>{% if sheet.link_sheet %} <a href="{{sheet.link_sheet}}" class="mylink">Link</a>{% else %}<div class="absent"> Not available </div>{% endif %} </td>
         <td>{% if sheet.link_solution %}
               {% if sheet.show_solutions %} <a href="{{sheet.link_solution}}" class="mylink">Link</a> {% else %} <div class="absent"> Please credit your students first </div> {% endif %} </td>
             {% else %}
-               <div class="absent"> Not available yet </div>
+               <div class="absent"> Not available </div>
             {% endif %}
     {% endfor %}
     </tr>
     <tr>
         <td>
-            <a href="{% url 'students' %}" class="mylink">new sheet</a>
+            <a href="{% url 'new_sheet' %}" class="mylink">new sheet</a>
         </td>
     </tr>
   </table>
