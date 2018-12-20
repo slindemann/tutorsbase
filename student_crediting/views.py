@@ -600,7 +600,11 @@ def stats_overview(request):
     errn_iz = F('avg_iz')-F('stddev_iz')
     errp_izt = F('avg_izt')+F('stddev_izt')
     errn_izt = F('avg_izt')-F('stddev_izt')
-    egroup = ExGroup.objects.select_related('tutor').exclude(number=10).order_by('number').annotate(avg=avg, avg_iz=avg_iz, avg_izt=avg_izt, stddev=stddev, errp=errp, errn=errn, stddev_iz=stddev_iz, errp_iz=errp_iz, errn_iz=errn_iz, stddev_izt=stddev_izt, errp_izt=errp_izt, errn_izt=errn_izt)
+
+    egroup = ExGroup.objects.select_related('tutor').exclude(number=10).order_by('number').annotate(avg=avg).annotate(stddev=stddev).annotate(errn=errn).annotate(errp=errp)
+    egroup = egroup.annotate(avg_iz=avg_iz).annotate(stddev_iz=stddev_iz).annotate(errn_iz=errn_iz).annotate(errp_iz=errp_iz)
+    egroup = egroup.annotate(avg_izt=avg_izt).annotate(stddev_izt=stddev_izt).annotate(errn_izt=errn_izt).annotate(errp_izt=errp_izt)
+
     if settings.DEBUG:
       for eg in egroup:
         print ("ExGroup {}: Avg={:.1f}, Stddev={:.1f}".format(eg.number, eg.avg, eg.stddev))
