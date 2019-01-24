@@ -14,8 +14,13 @@
             <th class="cursor-pointer-head" onclick="sortTable(3, numeric=true)">Credits</th>
 		  {% endif %}
           <th>Credits [%]</th>
+          {% if request.user.is_staff %}
+            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true)">Missed </th>
+		  {% else %}
+            <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true)">Missed </th>
+		  {% endif %}
         </tr>
-      {% for student in student_list %}
+      {% for student,student_mt in student_list %}
         <tr>
             <td><a href="student/{{ student.id }}/" class="mylink">{{ student.studentID }}</a></td>
             <td>{{ student.name }}</td>
@@ -30,6 +35,7 @@
                 <td>{{ student.credits_sum|floatformat:-1 }}</td> 
                 <td>{{ student.credits_sum_perc|floatformat:-1 }}</td> 
               {% endif %}
+            <td>{{ student_mt.missed_tutorials }} </td>
         </tr>
       {% endfor %}
       </table>
@@ -39,11 +45,22 @@
 function sortTable(n, numeric) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
   var ssw = false;
-  //console.log("Launched sortTabel(n="+n+", numeric="+numeric+") -> switchcount = "+switchcount);
   table = document.getElementById("students_table");
   switching = true;
-  //Set the sorting direction to ascending:
-  dir = "asc"; 
+  //Set the proper sorting direction (default is ascending):
+  var dtag = " \u25B2";
+  var atag = " \u25BC";
+  var tab_row_name = table.rows[0].getElementsByTagName("TH")[n].innerHTML;
+//  console.log("tab_row_name = "+tab_row_name);
+  if ( tab_row_name.includes(dtag) ){
+      dir = "asc";
+  } else if ( tab_row_name.includes(atag) ){
+      dir = "desc";
+  } else {
+//      console.log(dtag + " and " + atag + " not in " + encodeURI(tab_row_name));
+      dir = "asc";
+  }
+//  console.log("Launched sortTabel(n="+n+", numeric="+numeric+") -> switchcount = "+switchcount + "  - Direction = " + dir);
   /*Make a loop that will continue until
   no switching has been done:*/
   while (switching) {
@@ -52,7 +69,8 @@ function sortTable(n, numeric) {
     rows = table.rows;
     /*Loop through all table rows (except the
     first, which contains table headers):*/
-    for (i = 1; i < (rows.length - 2); i++) {
+    for (i = 1; i < (rows.length - 1); i++) {
+    //for (i = 1; i < (30); i++) {
       //start by saying there should be no switching:
       shouldSwitch = false;
       /*Get the two elements you want to compare,
@@ -61,10 +79,29 @@ function sortTable(n, numeric) {
       y = rows[i + 1].getElementsByTagName("TD")[n];
       /*check if the two rows should switch place,
       based on the direction, asc or desc:*/
-      if (numeric) { ssw = (+x.innerHTML > +y.innerHTML); } else { ssw = (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()); }
-      if (dir == "desc") { ssw = !ssw; }
+      if (numeric) { 
+          if( isNaN(+x.innerHTML) || isNaN(+y.innerHTML) ){
+              //var err_str = +x.innerHTML + " or " + +y.innerHTML + " is not a number <br/>";
+              var err_str = "Element is not a number <br/>";
+              //document.write(err_str);
+              //console.log(err_str);
+              return;
+          }
+          if (dir == "asc") {
+            ssw = (+x.innerHTML > +y.innerHTML); 
+          } else {
+            ssw = (+x.innerHTML < +y.innerHTML); 
+          }
+      } else { 
+          if (dir == "asc") {
+            ssw = (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()); 
+          } else {
+            ssw = (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()); 
+          }
+      }
       if (ssw) {
           shouldSwitch = true ;
+          //if (switchcount%100 == 0) {console.log(switchcount + " Please do switch.");}
           //if (switchcount > 1000) {  debugger; }
           break;
       }
@@ -76,21 +113,27 @@ function sortTable(n, numeric) {
       switching = true;
       //Each time a switch is done, increase this count by 1:
       switchcount ++;      
-    } else {
-      /*If no switching has been done AND the direction is "asc",
-      set the direction to "desc" and run the while loop again.*/
-      if (switchcount == 0 && dir == "asc") {
-        dir = "desc";
-        switching = true;
+      if (switchcount%100 == 0) {
+          //console.log("Make switch: rows[" + i + "]= " + rows[i].getElementsByTagName("TD")[n].innerHTML + " and rows["+ (i+1) +"]= " + rows[i+1].getElementsByTagName("TD")[n].innerHTML );
+          if (switchcount > 10000) {return; }
       }
-    }
+    } 
+//      else {
+//      /*If no switching has been done AND the direction is "asc",
+//      set the direction to "desc" and run the while loop again.*/
+//      if (switchcount == 0 && dir == "asc") {
+//        dir = "desc";
+//        switching = true;
+//      }
+//    }
+    //if (switchcount > 1000) { console.log("Breaking. Dir= ", dir); break; }
   }
-  var dtag = " &#x25B2;"
-  var atag = " &#x25BC;"
-  for (i = 1; i < (rows[0].cells.length - 1); i++) {
+  for (i = 1; i < (rows[0].cells.length); i++) {
       _ah = rows[0].getElementsByTagName("TH")[i];
-      _trimmed = _ah.innerHTML.split(" ")[0];
-      _ah.innerHTML = _trimmed;
+      if (!_ah.innerHTML.includes("%")) { 
+        _trimmed = _ah.innerHTML.split(" ")[0];
+        _ah.innerHTML = _trimmed;
+      }
   }
   sorted_header = rows[0].getElementsByTagName("TH")[n];
   old = sorted_header.innerHTML;

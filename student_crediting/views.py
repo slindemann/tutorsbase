@@ -275,14 +275,18 @@ def students(request):
   #sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
-    student_list = Student.objects.all()
+      student_list = Student.objects.all()
   else:
     student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
+  student_list_mt = student_list
   student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
                                        bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
                                        credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
                                        bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
+                                       #missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=True),
                                        ).order_by('exgroup__number','surname')
+  student_list_mt = student_list_mt.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False)).order_by('exgroup__number','surname')
+
 #  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
 #                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
 #                                       credits_sum_perc=100*F('credits_sum')/sum_credits['total_credits'],
@@ -290,7 +294,8 @@ def students(request):
 #                                       ).order_by('exgroup__number','surname')
 
   context = {#'form': form,
-             'student_list': student_list,
+             'student_list': zip(student_list,student_list_mt),
+             #'student_list_mt': student_list_mt,
              'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
