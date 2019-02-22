@@ -542,8 +542,11 @@ def student_details(request, student_pk):
     edata[-1]['total_bonus_credits'] = exams_meta[etitle]['total_bonus_credits']
     edata[-1]['total_credits_achieved'] = exams_meta[etitle]['total_credits_achieved']
     edata[-1]['total_bonus_credits_achieved'] = exams_meta[etitle]['total_bonus_credits_achieved']
+    edata[-1]['summed_scaled_credits'] = 28*exams_meta[etitle]['total_credits'] + sum_credits['total_credits']
+    edata[-1]['summed_scaled_credits_thr'] = 0.5*float(edata[-1]['summed_scaled_credits'])
+    edata[-1]['summed_scaled_credits_achieved'] = 28*exams_meta[etitle]['total_credits_achieved'] + sd1[0].credits_sum
     for exnumber in sorted(exams_meta[etitle]):
-      if exnumber in ['presence', 'exam_id', 'total_credits', 'total_bonus_credits', 'total_credits_achieved', 'total_bonus_credits_achieved']:
+      if exnumber in ['presence', 'exam_id', 'total_credits', 'total_bonus_credits', 'total_credits_achieved', 'total_bonus_credits_achieved', 'summed_scaled_credits', 'summed_scaled_credits_thr', 'summed_scaled_credits_achieved']:
       #if exnumber == 'presence' or exnumber == 'exam_id':
         continue
       edata[-1]['exam_data'].append({})

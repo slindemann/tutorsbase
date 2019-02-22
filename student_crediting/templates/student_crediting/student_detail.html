@@ -48,6 +48,18 @@
           </b>
       {% endif %}
   {% endfor %}
+
+
+<br> Combined (scaled) Credits : 
+  {% for ex in edata %}
+      {% if ex.presence.present %}
+      <b class="w3-xxlarge {% if ex.summed_scaled_credits_achieved < ex.summed_scaled_credits_thr %} absent {% endif %} "> 
+              {{ ex.summed_scaled_credits_achieved|floatformat:-1 }}</b>/ {{ ex.summed_scaled_credits|floatformat:-1  }}
+            &emsp;
+          </b>
+      {% endif %}
+  {% endfor %}
+
 </p>
 
 
