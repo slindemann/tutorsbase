@@ -372,6 +372,9 @@ SELECT s.id
        ,e.credits AS exam_credits_achieved
        ,e.max_credits AS exam_credits_possible
        ,r.credits AS exercise_credits_achieved
+       ,28*e.credits+r.credits AS combined_credits
+       ,28*e.max_credits+%s AS combined_credits_possible
+       ,0.5*(28*e.max_credits+%s) AS combined_credits_thr
 FROM student_crediting_student AS s
 LEFT OUTER JOIN (
 --    SELECT er.student_id, SUM(er.credits) AS credits, expres.exam_id, expres.exexercise_id
@@ -397,7 +400,7 @@ LEFT OUTER JOIN (
     GROUP BY student_id
 ) r ON r.student_id=s.id
 ORDER BY s.exgroup_id, s.surname;
-''')
+''', (sum_credits['total_credits'],sum_credits['total_credits']))
 
   context = {#'form': form,
              'student_list': zip(student_list,student_list_mt,student_list_mt2),

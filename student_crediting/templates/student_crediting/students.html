@@ -17,9 +17,11 @@
           {% if request.user.is_staff %}
             <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true)">Missed </th>
             <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='credits')">Exam</th>
+            <th class="cursor-pointer-head" onclick="sortTable(7, numeric=true, special='credits')">Total</th>
 		  {% else %}
             <th class="cursor-pointer-head" onclick="sortTable(4, numeric=true)">Missed </th>
             <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true, special='credits')">Exam</th>
+            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='credits')">Total</th>
 		  {% endif %}
         </tr>
       {% for student,student_mt,student_mt2 in student_list %}
@@ -39,6 +41,7 @@
               {% endif %}
             <td>{{ student_mt.missed_tutorials|floatformat:-1 }} </td>
             <td>{% if student_mt2.exam_credits_achieved %}{{student_mt2.exam_credits_achieved|floatformat:-1}} / {{student_mt2.exam_credits_possible|floatformat:-1}} {% endif %} </td>
+            <td>{% if student_mt2.combined_credits %}{{student_mt2.combined_credits|floatformat:-1}} / {{student_mt2.combined_credits_possible|floatformat:-1}} {% endif %} </td>
         </tr>
       {% endfor %}
       </table>
