@@ -19,8 +19,14 @@ urlpatterns = [
     url(r'^$', views.students, name='students'),
     url(r'^student/(?P<student_pk>[0-9]+)/$', views.student_details, name='student_details'),
     url(r'^student/([0-9]+)/(?P<credit_pk>[0-9]+)$', views.give_credit, name='edit_credits'),
-    url(r'^student/(?P<student_pk>[0-9]+)/credits/new/(?P<sheet_no>[0-9]+)/(?P<exercise_pk>[0-9]+)$', views.edit_credits, name='edit_credits'),
+    url(r'^student/(?P<student_pk>[0-9]+)/credits/new/(?P<sheet_no>[0-9]+)/(?P<exercise_pk>[0-9]+)$', views.edit_credits, name='give_credits'),
     url(r'^student/(?P<student_pk>[0-9]+)/presence/new/(?P<sheet_no>[0-9]+)$', views.give_presence, name='give_presence'),
+
+    path('student/<int:student_pk>/examcredits/<int:credit_pk>', views.give_examcredits, name='edit_examcredits'),
+    path('student/<int:student_pk>/examcredits/new/<int:exam_pk>/<int:exercise_pk>', views.edit_examcredits, name='give_examcredits'),
+    path('student/<int:student_pk>/exampresence/new/<int:exam_pk>', views.give_exampresence, name='give_exampresence'),
+    path('student/<int:student_pk>/exampresence/update/<int:presence_pk>', views.edit_exampresence, name='edit_exampresence'),
+
     url(r'^student/([0-9]+)/presence/update/(?P<presence_pk>[0-9]+)$', views.edit_presence, name='edit_presence'),
     url(r'^student/(?P<student_pk>[0-9]+)/edit_mail$', views.edit_student_mail, name='edit_student_mail'),
     url(r'^student/(?P<student_pk>[0-9]+)/edit_student$', views.edit_student_full, name='edit_student_full'),

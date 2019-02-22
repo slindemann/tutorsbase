@@ -12,12 +12,12 @@ from django.core.mail import EmailMessage, send_mail
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
-from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm, EditSheetForm
+from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm, EditSheetForm, GiveExamCreditForm, AssignExamPresenceForm
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 import pytz
 
-from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
+from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config, Exam, ExamExercise, ExamPresence, ExamResult 
 
 from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
 from django.db.models import FloatField
@@ -105,6 +105,42 @@ def give_credit(request, credit_pk=None):
                }
     return render(request, 'student_crediting/give_credits.html', context)
 
+@login_required
+def give_examcredits(request, credit_pk=None, student_pk=None):
+  _config = config_read()
+  if credit_pk:
+    instance = get_object_or_404(ExamResult, pk=credit_pk)
+    ex_credits = instance.examexercise.credits
+    ex_bonus_credits = instance.examexercise.bonus_credits
+    mvs={'credits':ex_credits, 'bonus_credits':ex_bonus_credits}
+  else:
+    mvs=None
+    instance=None
+  form = GiveExamCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  if form.is_valid():
+    student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+      sc.edited_by = request.user
+      sc.last_modified = timezone.now()
+      sc.save()
+      ## we do not want to send mail to student when exam details are entered!
+      #send_mail_to_student(request)
+      return redirect('student_details', sc.student.id)
+    else:
+      raise PermissionDenied("Permission denied.")
+  else:
+    #messages.error(request, 'Please correct the error below.')
+
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+    return render(request, 'student_crediting/give_examcredits.html', context)
+
+
 
 @login_required
 def send_mail_to_student(request):
@@ -146,7 +182,7 @@ def send_mail_to_student(request):
         if res.blackboard:
           body += " (Tafel: '{}')".format(res.blackboard)
         body += "\n"
-      tutorials_missed = 2
+      #tutorials_missed = 2
       body += "\nDein aktueller Punktestand ist {:.1f}/{:.0f}. Du hast {} mal im Tutorat gefehlt.\n".format(student.total_credits_achieved, credits_possible['credits_possible'], eg['tutorials_missed'])
       nm = student.num_bbm
       no = student.num_bbo
@@ -269,10 +305,52 @@ def exercise_sheets(request):
   return render(request, 'student_crediting/exercise_sheets.html', context)
 
 
+# @login_required
+# def students(request):
+#   #sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+#   sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+#   if request.user.is_staff:
+#       student_list = Student.objects.all()
+#   else:
+#     student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
+#   #student_list_mt = student_list
+#   #student_list_mt2 = student_list
+#   #student_list_mt3 = student_list
+#   student_list_mt = Student.objects.all()
+#   student_list_mt2 = Student.objects.all()
+#   student_list_mt3 = Student.objects.all()
+#   student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
+#                                        bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
+#                                        credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
+#                                        bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
+#                                        #missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=True),
+#                                        ).order_by('exgroup__number','surname')
+#   student_list_mt = student_list_mt.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False)).order_by('exgroup__number','surname')
+#   student_list_mt2 = student_list_mt2.annotate(
+#       exam_credits_achieved=Sum('examresult__credits', filter=Q(examresult__examexercise__exam__exampresence__present=True), distinct=False)
+#       ).order_by('exgroup__number','surname')
+# 
+#   print ("query mt2: {}".format(student_list_mt2.query))
+# 
+#   student_list_mt3 = student_list_mt3.annotate(
+#       exam_credits_possible=Count('examresult__examexercise__credits', filter=Q(examresult__examexercise__exam__exampresence__present=True), distinct=True)    
+#       ).order_by('exgroup__number','surname')
+# 
+# 
+#   context = {#'form': form,
+#              'student_list': zip(student_list,student_list_mt,student_list_mt2,student_list_mt3),
+#              #'student_list_mt': student_list_mt,
+#              'lecture': CURRENT_EVENT,
+#              'logged_user': request.user,
+#              'config': config_read(),
+#              }
+# 
+#   return render(request, 'student_crediting/students.html', context)
+# 
+
 
 @login_required
 def students(request):
-  #sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
       student_list = Student.objects.all()
@@ -283,19 +361,46 @@ def students(request):
                                        bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
                                        credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
                                        bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
-                                       #missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=True),
                                        ).order_by('exgroup__number','surname')
   student_list_mt = student_list_mt.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False)).order_by('exgroup__number','surname')
-
-#  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
-#                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
-#                                       credits_sum_perc=100*F('credits_sum')/sum_credits['total_credits'],
-#                                       bonus_credits_sum_perc=100*F('bonus_credits_sum')/sum_credits['total_bonus_credits'],
-#                                       ).order_by('exgroup__number','surname')
+### This raw_query is needed, because Django resolves multiple annotate/agregate calls into JOINS rather than separate queries. This results in multiple counting!
+  student_list_mt2 = Student.objects.raw('''
+SELECT s.id
+       ,s.name
+       ,s.surname
+       ,s.exgroup_id
+       ,e.credits AS exam_credits_achieved
+       ,e.max_credits AS exam_credits_possible
+       ,r.credits AS exercise_credits_achieved
+FROM student_crediting_student AS s
+LEFT OUTER JOIN (
+--    SELECT er.student_id, SUM(er.credits) AS credits, expres.exam_id, expres.exexercise_id
+    SELECT er.student_id, SUM(er.credits) AS credits, SUM(expres.exexercise_credits) AS max_credits
+    FROM student_crediting_examresult AS er
+    INNER JOIN (
+        SELECT ep.student_id AS student_id, ep.present AS present, ep.exam_id AS exam_id, exexercise.id AS exexercise_id, exexercise.credits AS exexercise_credits
+        FROM student_crediting_exampresence AS ep
+        INNER JOIN (
+            SELECT id, exam_id, credits
+            FROM student_crediting_examexercise
+            GROUP BY id
+        ) exexercise ON exexercise.exam_id = ep.exam_id
+        WHERE ep.present IS True
+        ORDER BY exexercise.exam_id, exexercise.id
+    ) expres ON expres.student_id=er.student_id AND expres.exexercise_id=er.examexercise_id
+    WHERE expres.present IS True
+    GROUP BY er.student_id
+) e ON e.student_id=s.id
+LEFT OUTER JOIN (
+    SELECT student_id, SUM(credits) AS credits
+    FROM student_crediting_result
+    GROUP BY student_id
+) r ON r.student_id=s.id
+ORDER BY s.exgroup_id, s.surname;
+''')
 
   context = {#'form': form,
-             'student_list': zip(student_list,student_list_mt),
-             #'student_list_mt': student_list_mt,
+             'student_list': zip(student_list,student_list_mt,student_list_mt2),
              'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
@@ -306,7 +411,25 @@ def students(request):
 
 @login_required
 def student_details(request, student_pk):
+
+  sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+  #sum_examcredits = Exam.objects.all().aggregate(total_credits=Sum('examexercise__credits'), total_bonus_credits=Sum('examexercise__bonus_credits'))
+
+  num_bbp = Count('result__blackboard', filter=(Q(result__blackboard='+')))
+  num_bbo = Count('result__blackboard', filter=(Q(result__blackboard='o')))
+  num_bbm = Count('result__blackboard', filter=(Q(result__blackboard='-')))
   student = Student.objects.select_related('exgroup__tutor').get(pk=student_pk)
+  _st = Student.objects.select_related('exgroup__tutor').filter(pk=student_pk)
+
+  sd1 = _st.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
+                         bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
+                         credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
+                         bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
+                         )
+  sd2 = _st.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False))
+  sd3 = _st.annotate(num_bbp=num_bbp).annotate(num_bbo=num_bbo).annotate(num_bbm=num_bbm)
+  #sd4 = _st.annotate(credits_sum=Sum('examresult__credits'))
+
   exercises = Exercise.objects.select_related('sheet')
   presence = Presence.objects.filter(student=student_pk)
   sheets_meta = {}
@@ -339,7 +462,7 @@ def student_details(request, student_pk):
 
   ## step3: reorganize dict 'sheets_meta' such that django template can visualize
   rdata = []
-  for snumber in sheets_meta:
+  for snumber in sorted(sheets_meta):
     rdata.append({})
     rdata[-1]['sheet'] = snumber
     rdata[-1]['presence'] = sheets_meta[snumber]['presence']
@@ -351,10 +474,94 @@ def student_details(request, student_pk):
       rdata[-1]['sheet_data'][-1]['exercise'] = exnumber
       for md in sheets_meta[snumber][exnumber]:
         rdata[-1]['sheet_data'][-1][md] = sheets_meta[snumber][exnumber][md]
+  #############################
+  #############################
+  #### Repeat above for exams:
+  #############################
+  exex = ExamExercise.objects.select_related('exam')
+  expres = ExamPresence.objects.filter(student=student_pk)
+  exams_meta = {}
+  ## step 1: fill exam and examExercises information to dict 'exams_meta'
+  for iex, ex in enumerate(exex):
+    if not ex.exam.title in exams_meta:
+      exams_meta[ex.exam.title] = {}
+      exams_meta[ex.exam.title]['exam_id'] = ex.exam.id
+      _ispres = expres.filter(exam__title=ex.exam.title)
+      if _ispres:
+        exams_meta[ex.exam.title]['presence'] = _ispres[0]
+      else:
+        exams_meta[ex.exam.title]['presence'] = None
+    if not ex.number in exams_meta[ex.exam.title]:
+      exams_meta[ex.exam.title][ex.number] = {}
+      exams_meta[ex.exam.title][ex.number]['exercise_pk'] = ex.id
+      exams_meta[ex.exam.title][ex.number]['credits'] = ex.credits
+      exams_meta[ex.exam.title][ex.number]['bonus_credits'] = ex.bonus_credits
+      exams_meta[ex.exam.title][ex.number]['credit_pk'] = None
+      exams_meta[ex.exam.title][ex.number]['credits_achieved'] = None
+      exams_meta[ex.exam.title][ex.number]['bonus_credits_achieved'] = None
+
+  ## step2: insert student's achievements into above dict 'exams_meta'
+  student_result = ExamResult.objects.filter(student=student_pk).select_related('examexercise__exam')
+  for sr in student_result:
+    exams_meta[sr.examexercise.exam.title][sr.examexercise.number]['credits_achieved'] = sr.credits
+    exams_meta[sr.examexercise.exam.title][sr.examexercise.number]['bonus_credits_achieved'] = sr.bonus_credits
+    exams_meta[sr.examexercise.exam.title][sr.examexercise.number]['credit_pk'] = sr.id
+  
+  ## step 2.2 sum_up credits for each exam
+  for exam_title in exams_meta:
+    _sum_c = 0
+    _sum_bc = 0
+    _sum_ca = 0
+    _sum_bca = 0
+    for exnumber in exams_meta[exam_title]:
+      if exnumber == 'presence' or exnumber == 'exam_id':
+        continue
+      _sum_c += exams_meta[exam_title][exnumber]['credits']
+      _sum_bc += exams_meta[exam_title][exnumber]['bonus_credits']
+      if exams_meta[exam_title][exnumber]['credits_achieved']:
+        _sum_ca += exams_meta[exam_title][exnumber]['credits_achieved']
+      if exams_meta[exam_title][exnumber]['bonus_credits_achieved']:
+        _sum_bca += exams_meta[exam_title][exnumber]['bonus_credits_achieved']
+    exams_meta[exam_title]['total_credits'] = _sum_c
+    exams_meta[exam_title]['total_bonus_credits'] = _sum_bc
+    exams_meta[exam_title]['total_credits_achieved'] = _sum_ca
+    exams_meta[exam_title]['total_bonus_credits_achieved'] = _sum_bca
+  
+  ## step3: reorganize dict 'exams_meta' such that django template can visualize
+  edata = []
+  #print("exams_meta: ", exams_meta)
+  #for eid, etitle in enumerate(exams_meta):
+  for etitle in sorted(exams_meta):
+    edata.append({})
+    #edata[-1]['exam_id'] = eid
+    edata[-1]['exam_id'] = exams_meta[etitle]['exam_id']
+    edata[-1]['exam_title'] = etitle
+    edata[-1]['presence'] = exams_meta[etitle]['presence']
+    edata[-1]['exam_data'] = []
+    edata[-1]['total_credits'] = exams_meta[etitle]['total_credits']
+    edata[-1]['total_bonus_credits'] = exams_meta[etitle]['total_bonus_credits']
+    edata[-1]['total_credits_achieved'] = exams_meta[etitle]['total_credits_achieved']
+    edata[-1]['total_bonus_credits_achieved'] = exams_meta[etitle]['total_bonus_credits_achieved']
+    for exnumber in sorted(exams_meta[etitle]):
+      if exnumber in ['presence', 'exam_id', 'total_credits', 'total_bonus_credits', 'total_credits_achieved', 'total_bonus_credits_achieved']:
+      #if exnumber == 'presence' or exnumber == 'exam_id':
+        continue
+      edata[-1]['exam_data'].append({})
+      edata[-1]['exam_data'][-1]['exercise'] = exnumber
+      for md in exams_meta[etitle][exnumber]:
+        edata[-1]['exam_data'][-1][md] = exams_meta[etitle][exnumber][md]
+
+
+  print ('edata: ', edata)
 
   context = {#'form': form,
              'student': student,
              'rdata': rdata,
+             'edata': edata,
+             'sum_credits': sum_credits,
+             'student_info_credits': sd1,
+             'student_info_presence': sd2,
+             'student_info_blackboard': sd3,
              'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
@@ -376,6 +583,24 @@ def exgroup_details(request, exgroup_pk):
   return render(request, 'student_crediting/exgroup_detail.html', context)
 
 
+@login_required
+def edit_examcredits(request, student_pk, exam_pk, exercise_pk):
+  ## generates new ExamResults object with above data and passes the pk of this object to 'give_examcredit' function
+  student = get_object_or_404(Student, id=student_pk)
+  if not (student.exgroup.tutor == request.user or request.user.is_staff):
+    raise PermissionDenied("Permission denied")
+  print ("exercise_ok: ", exercise_pk)
+  examexercise = get_object_or_404(ExamExercise, id=exercise_pk)
+  print ("student: ", student)
+  print ("examexercise: ", examexercise)
+  try:
+    #res = ExamResult.objects.filter(student=student, examexercise=examexercise)[0]
+    res = ExamResult.objects.get(student=student, examexercise=examexercise)
+  except:
+    print ("There is no ExamResult for the combination of (student, examexercise)=({},{})".format(student, examexercise))
+    res = ExamResult.objects.create(student=student, examexercise=examexercise, edited_by=request.user, credits=0, bonus_credits=0 )
+  return give_examcredits(request, credit_pk=res.id, student_pk=student_pk)
+
 
 
 @login_required
@@ -390,6 +615,20 @@ def edit_credits(request, student_pk, sheet_no, exercise_pk):
   except:
     res = Result.objects.create(student=student, exercise=exercise, edited_by=request.user, )
   return give_credit(request, credit_pk=res.id)
+
+@login_required
+def give_exampresence(request, student_pk, exam_pk):
+  student = get_object_or_404(Student, id=student_pk)
+  if not (student.exgroup.tutor == request.user or request.user.is_staff):
+    raise PermissionDenied("Permission denied")
+  exam = get_object_or_404(Exam, id=exam_pk)
+  #print ('student: ', student)
+  #print ('sheet: ', sheet)
+  try:
+    pres = ExamPresence.objects.filter(student=student, exam=exam)[0]
+  except:
+    pres = ExamPresence.objects.create(student=student, exam=exam)
+  return edit_exampresence(request, presence_pk=pres.id, student_pk=student_pk)
 
 
 @login_required
@@ -432,6 +671,34 @@ def edit_presence(request, presence_pk=None):
                }
 
     return render(request, 'student_crediting/assign_presence.html', context)
+
+
+
+@login_required
+def edit_exampresence(request, presence_pk=None, student_pk=None):
+  if presence_pk:
+    instance = get_object_or_404(ExamPresence, pk=presence_pk)
+  else:
+    instance=None
+  form = AssignExamPresenceForm(request.POST or None, instance=instance, user=request.user)
+  if form.is_valid():
+    student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+      sc.save()
+      #send_mail_to_student(request)
+      return redirect('student_details', sc.student.id)
+    else:
+      raise PermissionDenied("Permission denied.")
+  else:
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+
+    return render(request, 'student_crediting/assign_exampresence.html', context)
 
 @login_required
 def edit_sheet(request, sheet_pk=None):
