@@ -21,6 +21,9 @@
         <p><a href="{% url 'edit_student_mail' student.id %}" class="absent">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
     {% endif %}
 {% endif %}
+<p>Matrikelnr.: <span class="w3-xlarge">{{ student.matrikelnr }}</span></p>
+
+<hr>
 
 <p class="w3-xlarge"> Credits: 
   <b class="w3-xlarge">{{ student_info_credits.0.credits_sum |floatformat:-1 }}</b> / {{sum_credits.total_credits|floatformat:-1 }} 
@@ -62,6 +65,7 @@
 
 </p>
 
+<hr>
 
   {% if edata %}
     <h2> Exams </h2>
@@ -102,7 +106,7 @@
         </table>
   {% endif %}
 
-
+  <hr>
 
   {% if rdata %}
     <h2> Exercises </h2>

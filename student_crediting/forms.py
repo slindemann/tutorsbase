@@ -143,7 +143,7 @@ class EditStudentFullForm(forms.ModelForm):
 
   class Meta:
     model = Student
-    fields = ('name', 'surname', 'exgroup', 'studentID','email', )
+    fields = ('name', 'surname', 'exgroup', 'studentID', 'matrikelnr' ,'email', )
 
 
 
