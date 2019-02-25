@@ -32,6 +32,7 @@ class Student(models.Model):
     studentID = models.CharField(help_text="Student's RZ ID", max_length=8, default=None, unique=True)
     exgroup = models.ForeignKey(ExGroup, on_delete=models.PROTECT)
     email = models.EmailField(default=None, blank=True, null=True )
+    matrikelnr = models.IntegerField(help_text='Matrikelnr.', unique=True, default=None, blank=True, null=True)
 
     def __str__(self):
         #return "(ID{}) {} {} ({})".format(self.pk, self.name, self.surname, self.studentID)
