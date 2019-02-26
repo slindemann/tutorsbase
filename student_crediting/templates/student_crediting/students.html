@@ -2,7 +2,7 @@
 
 {% block content %}
   {% if student_list %}
-      <table class="w3-table-all w3-hoverable w3-card-4" id="students_table">
+      <table class="w3-table-all w3-hoverable w3-card-4" id="students_table" onload="numberRows('last')">
         <tr>
 		  <th>RZ ID</th>
           <th class="cursor-pointer-head" onclick="sortTable(1, numeric=false)">Name</th>
@@ -23,6 +23,7 @@
             <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true, special='credits')">Exam</th>
             <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='credits')">Total</th>
 		  {% endif %}
+          <th class="cursor-pointer-head" onclick="numberRows('last')">#</th>
         </tr>
       {% for student,student_mt,student_mt2 in student_list %}
         <tr>
@@ -42,11 +43,25 @@
             <td>{{ student_mt.missed_tutorials|floatformat:-1 }} </td>
             <td>{% if student_mt2.exam_credits_achieved %}{{student_mt2.exam_credits_achieved|floatformat:-1}} / {{student_mt2.exam_credits_possible|floatformat:-1}} {% endif %} </td>
             <td>{% if student_mt2.combined_credits %}{{student_mt2.combined_credits|floatformat:-1}} / {{student_mt2.combined_credits_possible|floatformat:-1}} {% endif %} </td>
+            <td></td>
         </tr>
       {% endfor %}
       </table>
 
 <script>
+function numberRows(n=7) {
+    var rows, i = 0;
+    table = document.getElementById("students_table");
+    rows = table.rows;
+    if (n=='last') {
+        n = rows[0].cells.length - 1;
+        //console.log('last; n=', n);
+    }
+    for (i = 1; i < (rows.length); i++) {
+        rows[i].getElementsByTagName("TD")[n].innerHTML = i;
+    };
+};
+
 //function sortTable(n) {
 function sortTable(n, numeric, special="") {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
@@ -156,6 +171,9 @@ function sortTable(n, numeric, special="") {
   } else {
     sorted_header.innerHTML = old + dtag;
   }
+// add numbers to rows:
+  //console.log('table.rows[0].cells.length = ', table.rows[0].cells.length);
+  numberRows(n=table.rows[0].cells.length-1);
 }
 </script>
 

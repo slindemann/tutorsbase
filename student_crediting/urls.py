@@ -34,6 +34,8 @@ urlpatterns = [
     url(r'^stats_overview/$', views.stats_overview, name='stats_overview'),
     url(r'^stats_detail/$', views.stats_detail, name='stats_detail'),
 #
+    path('stats_exam_overview', views.stats_exam_overview, name='stats_exam_overview'),
+#
     url(r'^exercises/sheets$', views.exercise_sheets, name='exercise_sheets'),
     path('exercises/sheets/<int:sheet_pk>/', views.edit_sheet, name='edit_sheet'),
     path('exercises/sheets/new/', views.edit_sheet, name='new_sheet'),

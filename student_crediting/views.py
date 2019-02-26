@@ -826,6 +826,123 @@ def edit_student_full(request, student_pk=None):
 #                }
 #     return render(request, 'student_crediting/statistics.html', context)
 
+def bin_centers(edges):
+  _bc = []
+  _edg = []
+  for i in range(len(edges)-1):
+    _bct = (edges[i+1]+edges[i])/2
+    _bc.append(_bct)
+    _edg.append((edges[i], edges[i+1]))
+  return (np.array(_bc), _edg)
+
+@login_required
+def stats_exam_overview(request):
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied.")
+
+
+  exams = Exam.objects.all()
+  _ex = {}
+  for exam in exams:
+    _ex[exam.pk] = {}
+    _ex[exam.pk]['title'] = exam.title
+    _ex[exam.pk]['hist'] = None
+    _ex[exam.pk]['edges'] = None
+    _mc = float(ExamExercise.objects.filter(exam=exam).aggregate(max_credits=Sum('credits'))['max_credits'])
+    _ex[exam.pk]['max_credits'] = _mc
+    exam_result_list = list(Student.objects.annotate(exam_credits_sum=Sum('examresult__credits', filter=(Q(examresult__examexercise__exam=exam)))).exclude(exam_credits_sum=0).values_list('exam_credits_sum', flat=True) )
+    try:
+      # convert values to float and remove np.nan/None values:
+      _dat = np.array(exam_result_list, dtype=np.float)
+      _dat = _dat[~np.isnan(_dat)]
+      exam_result_list = list(_dat)
+    except:
+      exam_result_list = None
+
+    _h, _edges = np.histogram(exam_result_list, bins=int(_mc/2), range=(0,_mc), density=False)
+    _ex[exam.pk]['hist'] = list(_h)
+    _bc, _edg = bin_centers(edges=_edges)
+    _ex[exam.pk]['edges'] = _edg
+    _ex[exam.pk]['bc'] = _bc
+    _ex[exam.pk]['histedges'] = zip( _ex[exam.pk]['hist'] , _ex[exam.pk]['edges'] )
+
+
+
+##################### combined credits:
+  _mult = 28 ## factor to combine results, i.e. total_credits = expercises_credits + _mult * exam_credits
+  sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+  sl = Student.objects.raw('''
+SELECT s.id
+       ,s.name
+       ,s.surname
+       ,s.exgroup_id
+       ,e.credits AS exam_credits_achieved
+       ,e.max_credits AS exam_credits_possible
+       ,r.credits AS exercise_credits_achieved
+       ,%s*e.credits+r.credits AS combined_credits
+       ,%s*e.max_credits+%s AS combined_credits_possible
+FROM student_crediting_student AS s
+LEFT OUTER JOIN (
+--    SELECT er.student_id, SUM(er.credits) AS credits, expres.exam_id, expres.exexercise_id
+    SELECT er.student_id, SUM(er.credits) AS credits, SUM(expres.exexercise_credits) AS max_credits
+    FROM student_crediting_examresult AS er
+    INNER JOIN (
+        SELECT ep.student_id AS student_id, ep.present AS present, ep.exam_id AS exam_id, exexercise.id AS exexercise_id, exexercise.credits AS exexercise_credits
+        FROM student_crediting_exampresence AS ep
+        INNER JOIN (
+            SELECT id, exam_id, credits
+            FROM student_crediting_examexercise
+            GROUP BY id
+        ) exexercise ON exexercise.exam_id = ep.exam_id
+        WHERE ep.present IS True
+        ORDER BY exexercise.exam_id, exexercise.id
+    ) expres ON expres.student_id=er.student_id AND expres.exexercise_id=er.examexercise_id
+    WHERE expres.present IS True
+    GROUP BY er.student_id
+) e ON e.student_id=s.id
+LEFT OUTER JOIN (
+    SELECT student_id, SUM(credits) AS credits
+    FROM student_crediting_result
+    GROUP BY student_id
+) r ON r.student_id=s.id
+ORDER BY s.exgroup_id, s.surname;
+''', (_mult, _mult ,sum_credits['total_credits']))
+
+  _cc_max, _ec_max, _cc_achieved = [],[],[]
+  for stud in sl:
+    _cc_max.append(stud.combined_credits_possible)
+    _ec_max.append(stud.exam_credits_possible)
+    _cc_achieved.append(stud.combined_credits)
+
+  _cc_max = np.array(_cc_max, dtype=np.float)
+  _ec_max = np.array(_ec_max, dtype=np.float)
+  _cc_achieved = np.array(_cc_achieved, dtype=np.float)
+#  print ("_cc_achieved: ", _cc_achieved)
+  xnan = [~np.isnan(_cc_achieved)]
+  _cc_max = _cc_max[xnan]
+  _ec_max = _ec_max[xnan]
+  _cc_achieved = _cc_achieved[xnan]
+  assert len(_cc_max) == len(_ec_max)
+  assert len(_ec_max) == len(_cc_achieved)
+  for exam in exams:
+    _mc = float(ExamExercise.objects.filter(exam=exam).aggregate(max_credits=Sum('credits'))['max_credits'])
+    _ht, _et = np.histogram(_cc_achieved[(_ec_max==_mc)], bins=20, range=(0, _cc_max[(_ec_max==_mc)][0]), density=False)
+
+    _tbc, _tedg = bin_centers(edges=_et)
+    _ex[exam.pk]['edges_tot'] = _tedg
+    _ex[exam.pk]['bc_tot'] = _tbc
+    _ex[exam.pk]['he_tot'] = zip( list(_ht) , _ex[exam.pk]['edges_tot'] )
+
+
+
+  context = {
+             'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'exams': _ex,
+             'config': config_read(),
+             }
+  return render(request, 'student_crediting/exam_statistics_overview.html', context)
+
 
 @login_required
 def stats_overview(request):
