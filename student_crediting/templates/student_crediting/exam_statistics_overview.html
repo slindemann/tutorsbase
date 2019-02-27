@@ -3,7 +3,6 @@
 {% block content %}
   <div class="w3-container w3-margin-left">
     <h1>Exam Statistics</h1>
-  <div id="container"></div>
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
 
@@ -63,6 +62,64 @@
         ]
     });
   </script>
+
+
+  <div id="exercises{{examid}}"></div>
+    <script>
+    Highcharts.chart("exercises{{examid}}", {
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: ''
+        },
+        credits: {
+            enabled: false
+        },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0
+            }
+        },
+        xAxis: {
+            title: { text: 'Total Credits Exercises' },
+            alignTicks: false,
+          categories: [
+                {% for vbc in dvals.bc_exec %}
+                  '{{vbc|floatformat:-1}}', 
+                {% endfor %}
+                  ]
+        },
+        yAxis: {
+            title: { text: 'Occurances' },
+        },
+        tooltip:{
+            formatter: function() {
+                var s = "<div style='font-size: smaller;'> Bin ["+ this.point.edgl + ", " + this.point.edgh +"]</div>";
+                return s += '<br/><span style="color:' + this.point.color + '">\u25CF</span> '+ 'Occurances: <b>' + this.point.y + '</b>';
+            },
+            outside: true,
+            hideDelay: 50,
+        },
+        series: [
+                {
+                name: '{{dvals.title}}',
+				data: [
+					{% for dvh, edg in dvals.he_exec %}
+                        {y: {{dvh}},
+                         edgl: {{edg.0|floatformat:-1}},
+                         edgh: {{edg.1|floatformat:-1}},
+                        },
+					{% endfor %}
+                ]
+                },
+        ]
+    });
+  </script>
+
+
+
 
 
   <div id="combined{{examid}}"></div>

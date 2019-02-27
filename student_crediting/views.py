@@ -908,30 +908,42 @@ LEFT OUTER JOIN (
 ORDER BY s.exgroup_id, s.surname;
 ''', (_mult, _mult ,sum_credits['total_credits']))
 
-  _cc_max, _ec_max, _cc_achieved = [],[],[]
+  _cc_max, _ec_max, _ec_achieved, _cc_achieved = [],[],[],[]
   for stud in sl:
     _cc_max.append(stud.combined_credits_possible)
     _ec_max.append(stud.exam_credits_possible)
     _cc_achieved.append(stud.combined_credits)
+    _ec_achieved.append(stud.exercise_credits_achieved)
 
   _cc_max = np.array(_cc_max, dtype=np.float)
   _ec_max = np.array(_ec_max, dtype=np.float)
   _cc_achieved = np.array(_cc_achieved, dtype=np.float)
+  _ec_achieved = np.array(_ec_achieved, dtype=np.float)
 #  print ("_cc_achieved: ", _cc_achieved)
   xnan = [~np.isnan(_cc_achieved)]
   _cc_max = _cc_max[xnan]
   _ec_max = _ec_max[xnan]
   _cc_achieved = _cc_achieved[xnan]
+  _ec_achieved = _ec_achieved[xnan]
   assert len(_cc_max) == len(_ec_max)
   assert len(_ec_max) == len(_cc_achieved)
+  assert len(_ec_max) == len(_ec_achieved)
   for exam in exams:
     _mc = float(ExamExercise.objects.filter(exam=exam).aggregate(max_credits=Sum('credits'))['max_credits'])
     _ht, _et = np.histogram(_cc_achieved[(_ec_max==_mc)], bins=20, range=(0, _cc_max[(_ec_max==_mc)][0]), density=False)
-
     _tbc, _tedg = bin_centers(edges=_et)
-    _ex[exam.pk]['edges_tot'] = _tedg
     _ex[exam.pk]['bc_tot'] = _tbc
+    _ex[exam.pk]['edges_tot'] = _tedg
     _ex[exam.pk]['he_tot'] = zip( list(_ht) , _ex[exam.pk]['edges_tot'] )
+
+    _hexec, _eexec = np.histogram(_ec_achieved[(_ec_max==_mc)], bins=20, range=(0, float(sum_credits['total_credits'])), density=False)
+    print ("_ec_achieved[(_ec_max==_mc)] = ", _ec_achieved[(_ec_max==_mc)])
+    print ("_hexec: ", _hexec)
+    _exec_bc, _exec_edg = bin_centers(edges=_eexec)
+    _ex[exam.pk]['bc_exec'] = _exec_bc
+    _ex[exam.pk]['edges_exec'] = _exec_edg
+    _ex[exam.pk]['he_exec'] = zip( list(_hexec) , _ex[exam.pk]['edges_exec'] )
+
 
 
 
