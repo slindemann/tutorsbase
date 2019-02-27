@@ -38,9 +38,9 @@ style="display:none;z-index:2;width:40%;min-width:300px" id="mySidebar">
   {% endcomment %}
     <a href="{% url 'stats_overview' %}" onclick="w3_close()" class="w3-bar-item w3-button">Exercise Stats Overview</a>
     <a href="{% url 'stats_detail' %}" onclick="w3_close()" class="w3-bar-item w3-button">Exercise Stats Detail</a>
+    <a href="{% url 'stats_exam_overview' %}" onclick="w3_close()" class="w3-bar-item w3-button">Exam Stats Overview</a>
   {% endif %}
   {% if request.user.is_superuser %}
-    <a href="{% url 'stats_exam_overview' %}" onclick="w3_close()" class="w3-bar-item w3-button">Exam Stats Overview</a>
     <a href="{% url 'admin:index' %}" onclick="w3_close()" class="w3-bar-item w3-button">Admin Index</a>
   {% endif %}
   <a href="{% url 'change_password' %}" onclick="w3_close()" class="w3-bar-item w3-button">Change Password</a>
