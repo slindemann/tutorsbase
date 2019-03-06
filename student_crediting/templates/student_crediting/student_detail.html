@@ -7,6 +7,7 @@
     <h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
 {% endif %}
 
+<div class="w3-right w3-padding"> <a href="{% url 'students' %}" class="mylink">back to 'My Students'</a> </div>
 
 {% if request.user.is_staff %}
     {% if student.email %}
@@ -62,7 +63,6 @@
           </b>
       {% endif %}
   {% endfor %}
-
 </p>
 
 <hr>

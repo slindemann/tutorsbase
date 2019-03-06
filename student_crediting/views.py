@@ -305,66 +305,17 @@ def exercise_sheets(request):
   return render(request, 'student_crediting/exercise_sheets.html', context)
 
 
-# @login_required
-# def students(request):
-#   #sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
-#   sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
-#   if request.user.is_staff:
-#       student_list = Student.objects.all()
-#   else:
-#     student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
-#   #student_list_mt = student_list
-#   #student_list_mt2 = student_list
-#   #student_list_mt3 = student_list
-#   student_list_mt = Student.objects.all()
-#   student_list_mt2 = Student.objects.all()
-#   student_list_mt3 = Student.objects.all()
-#   student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
-#                                        bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
-#                                        credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
-#                                        bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
-#                                        #missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=True),
-#                                        ).order_by('exgroup__number','surname')
-#   student_list_mt = student_list_mt.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False)).order_by('exgroup__number','surname')
-#   student_list_mt2 = student_list_mt2.annotate(
-#       exam_credits_achieved=Sum('examresult__credits', filter=Q(examresult__examexercise__exam__exampresence__present=True), distinct=False)
-#       ).order_by('exgroup__number','surname')
-# 
-#   print ("query mt2: {}".format(student_list_mt2.query))
-# 
-#   student_list_mt3 = student_list_mt3.annotate(
-#       exam_credits_possible=Count('examresult__examexercise__credits', filter=Q(examresult__examexercise__exam__exampresence__present=True), distinct=True)    
-#       ).order_by('exgroup__number','surname')
-# 
-# 
-#   context = {#'form': form,
-#              'student_list': zip(student_list,student_list_mt,student_list_mt2,student_list_mt3),
-#              #'student_list_mt': student_list_mt,
-#              'lecture': CURRENT_EVENT,
-#              'logged_user': request.user,
-#              'config': config_read(),
-#              }
-# 
-#   return render(request, 'student_crediting/students.html', context)
-# 
-
 
 @login_required
 def students(request):
   sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
-      student_list = Student.objects.all()
+    tutors_list = list(User.objects.all().values_list('id', flat=True))
   else:
-    student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
-  student_list_mt = student_list
-  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
-                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
-                                       credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
-                                       bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
-                                       ).order_by('exgroup__number','surname')
-  student_list_mt = student_list_mt.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False)).order_by('exgroup__number','surname')
-### This raw_query is needed, because Django resolves multiple annotate/agregate calls into JOINS rather than separate queries. This results in multiple counting!
-  student_list_mt2 = Student.objects.raw('''
+    tutors_list = [request.user.id, ]
+    ## pretend being tutor 8 (rolf schimmer) for testing purpose:
+    #tutors_list = [8,]
+  student_list = Student.objects.raw('''
 SELECT s.id
        ,s.name
        ,s.surname
@@ -372,12 +323,19 @@ SELECT s.id
        ,e.credits AS exam_credits_achieved
        ,e.max_credits AS exam_credits_possible
        ,r.credits AS exercise_credits_achieved
+       ,100*r.credits/%s AS exercise_credits_achieved_perc
+       ,r.bonus_credits AS exercise_bonus_credits_achieved
+       ,100*r.bonus_credits/%s AS exercise_bonus_credits_achieved_perc
        ,28*e.credits+r.credits AS combined_credits
        ,28*e.max_credits+%s AS combined_credits_possible
        ,0.5*(28*e.max_credits+%s) AS combined_credits_thr
+       ,eg.first_name AS tutorfirstname
+       ,eg.last_name AS tutorlastname
+       ,eg.tutor_id AS tutorid
+       ,eg.number AS egnumber
+       ,m.missed AS missed_tutorials
 FROM student_crediting_student AS s
 LEFT OUTER JOIN (
---    SELECT er.student_id, SUM(er.credits) AS credits, expres.exam_id, expres.exexercise_id
     SELECT er.student_id, SUM(er.credits) AS credits, SUM(expres.exexercise_credits) AS max_credits
     FROM student_crediting_examresult AS er
     INNER JOIN (
@@ -395,15 +353,38 @@ LEFT OUTER JOIN (
     GROUP BY er.student_id
 ) e ON e.student_id=s.id
 LEFT OUTER JOIN (
-    SELECT student_id, SUM(credits) AS credits
+    SELECT student_id
+           ,SUM(credits) AS credits
+           ,SUM(bonus_credits) AS bonus_credits
     FROM student_crediting_result
+    WHERE blackboard IS NULL OR blackboard IN ('+','o')
     GROUP BY student_id
 ) r ON r.student_id=s.id
+JOIN (
+    SELECT eg.id
+          ,eg.number
+          ,eg.tutor_id
+          ,u.first_name
+          ,u.last_name
+    FROM student_crediting_exgroup as eg
+    JOIN (
+         SELECT id, first_name, last_name
+         FROM auth_user
+    ) u on u.id=eg.tutor_id
+) eg ON eg.id=s.exgroup_id
+LEFT OUTER JOIN (
+    SELECT m.student_id
+          ,COUNT(m.present) as missed
+    FROM student_crediting_presence as m
+    WHERE m.present=FALSE
+    GROUP BY m.student_id
+) m ON m.student_id=s.id
+WHERE eg.tutor_id=ANY(%s)
 ORDER BY s.exgroup_id, s.surname;
-''', (sum_credits['total_credits'],sum_credits['total_credits']))
+''', (sum_credits['total_credits'],sum_credits['total_bonus_credits'], sum_credits['total_credits'],sum_credits['total_credits'],tutors_list ))
 
   context = {#'form': form,
-             'student_list': zip(student_list,student_list_mt,student_list_mt2),
+             'student_list': student_list,
              'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
@@ -556,9 +537,6 @@ def student_details(request, student_pk):
       edata[-1]['exam_data'][-1]['exercise'] = exnumber
       for md in exams_meta[etitle][exnumber]:
         edata[-1]['exam_data'][-1][md] = exams_meta[etitle][exnumber][md]
-
-
-  print ('edata: ', edata)
 
   context = {#'form': form,
              'student': student,
@@ -943,9 +921,6 @@ ORDER BY s.exgroup_id, s.surname;
     _ex[exam.pk]['bc_exec'] = _exec_bc
     _ex[exam.pk]['edges_exec'] = _exec_edg
     _ex[exam.pk]['he_exec'] = zip( list(_hexec) , _ex[exam.pk]['edges_exec'] )
-
-
-
 
   context = {
              'lecture': CURRENT_EVENT,

@@ -25,24 +25,22 @@
 		  {% endif %}
           <th class="cursor-pointer-head" onclick="numberRows('last')">#</th>
         </tr>
-      {% for student,student_mt,student_mt2 in student_list %}
+      {% for student in student_list %}
         <tr>
             <td><a href="student/{{ student.id }}/" class="mylink">{{ student.studentID }}</a></td>
             <td>{{ student.name }}</td>
             <td>{{ student.surname }}</td>
               {% if request.user.is_staff %}
-              <td><a href="{% url 'exgroup_details' student.exgroup.number %}" class="mylink"> G{{ student.exgroup.number}}</a> ({{ student.exgroup.tutor.last_name }})</td>
+              <td><a href="{% url 'exgroup_details' student.egnumber %}" class="mylink"> G{{ student.egnumber}}</a> ({{ student.tutorlastname }})</td>
               {% endif %}
               {% if config.bonus_credits %}
-                <td>{{ student.credits_sum }}+{{ student.bonus_credits_sum }} (({{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }})%)</td> 
-                {% comment %} <td>{{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }} </td> {% endcomment %} 
+                <td>{{ student.exercise_credits_achieved }}+{{ student.exercise_bonus_credits_achieved }} (({{ student.exercise_credits_achieved_perc|stringformat:".1f" }}+{{ student.exercise_bonus_credits_achieved_perc|stringformat:".1f" }})%)</td> 
               {% else %}
-                <td>{{ student.credits_sum|floatformat:-1 }} ({{ student.credits_sum_perc|floatformat:-1 }}%)</td> 
-                {% comment %} <td>{{ student.credits_sum_perc|floatformat:-1 }}</td> {% endcomment %}
+                <td>{{ student.exercise_credits_achieved|floatformat:-1 }} ({{ student.exercise_credits_achieved_perc|floatformat:-1 }}%)</td> 
               {% endif %}
-            <td>{{ student_mt.missed_tutorials|floatformat:-1 }} </td>
-            <td>{% if student_mt2.exam_credits_achieved %}{{student_mt2.exam_credits_achieved|floatformat:-1}} / {{student_mt2.exam_credits_possible|floatformat:-1}} {% endif %} </td>
-            <td>{% if student_mt2.combined_credits %}{{student_mt2.combined_credits|floatformat:-1}} / {{student_mt2.combined_credits_possible|floatformat:-1}} {% endif %} </td>
+              <td>{% if student.missed_tutorials %}{{ student.missed_tutorials|floatformat:-1 }} {% else %}0{% endif %}</td>
+              <td>{% if student.exam_credits_possible %}{{student.exam_credits_achieved|floatformat:-1}} / {{student.exam_credits_possible|floatformat:-1}}{%else%}-{% endif %} </td>
+            <td>{% if student.combined_credits_possible %}{{student.combined_credits|floatformat:-1}} / {{student.combined_credits_possible|floatformat:-1}}{%else%}-{% endif %} </td>
             <td></td>
         </tr>
       {% endfor %}
