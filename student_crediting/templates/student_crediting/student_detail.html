@@ -7,6 +7,7 @@
     <h2> {{ student.name }} {{ student.surname}}  ({{ student.studentID }}) </h2>
 {% endif %}
 
+<div class="w3-right w3-padding"> <a href="{% url 'students' %}" class="mylink">back to 'My Students'</a> </div>
 
 {% if request.user.is_staff %}
     {% if student.email %}
@@ -21,15 +22,100 @@
         <p><a href="{% url 'edit_student_mail' student.id %}" class="absent">!!! PLEASE REGISTER STUDENT'S EMAIL ADDRESS !!!</a> </p>
     {% endif %}
 {% endif %}
+<p>Matrikelnr.: <span class="w3-xlarge">{{ student.matrikelnr }}</span></p>
+
+<hr>
+
+<p class="w3-xlarge"> Credits: 
+  <b class="w3-xlarge">{{ student_info_credits.0.credits_sum |floatformat:-1 }}</b> / {{sum_credits.total_credits|floatformat:-1 }} 
+  (<b class="w3-xxlarge {% if student_info_credits.0.credits_sum_perc < 50  %} absent {% endif %}">{{ student_info_credits.0.credits_sum_perc|floatformat:-1 }}%</b>)
+<br> Missed Exercises: 
+  <b class="w3-xxlarge {% if student_info_presence.0.missed_tutorials > 2 %} absent {% endif %}" >{{ student_info_presence.0.missed_tutorials | floatformat:0 }}</b> 
+<br> Blackboard: 
+    '-': {{ student_info_blackboard.0.num_bbm|floatformat:0}} mal,  
+    'o': {{ student_info_blackboard.0.num_bbo|floatformat:0}} mal, 
+  <b class="w3-xlarge">
+      '+': <span class="w3-xxlarge {% if student_info_blackboard.0.num_bbp < 2  %} absent {% endif %}">  {{ student_info_blackboard.0.num_bbp|floatformat:0}} mal</span>
+  </b>
+<br> Exam:
+  {% for ex in edata %}
+      {% if ex.presence.present %}
+          <b class="w3-xxlarge"> 
+            {{ ex.total_credits_achieved|floatformat:-1 }}
+            {% if config.bonus_credits %}
+                +{{re.total_bonus_credits_achieved|floatformat:-1}}
+                {% endif %}</b>/ {{ ex.total_credits|floatformat:-1 }}
+            {% if config.bonus_credits %}
+                +{{re.total_bonus_credits|floatformat:-1}}
+            {% endif %}
+            &emsp;
+          </b>
+      {% endif %}
+  {% endfor %}
+
+
+<br> Combined (scaled) Credits : 
+  {% for ex in edata %}
+      {% if ex.presence.present %}
+      <b class="w3-xxlarge {% if ex.summed_scaled_credits_achieved < ex.summed_scaled_credits_thr %} absent {% endif %} "> 
+              {{ ex.summed_scaled_credits_achieved|floatformat:-1 }}</b>/ {{ ex.summed_scaled_credits|floatformat:-1  }}
+            &emsp;
+          </b>
+      {% endif %}
+  {% endfor %}
+</p>
+
+<hr>
+
+  {% if edata %}
+    <h2> Exams </h2>
+        <table class="w3-table-all w3-hoverable w3-card-4">
+        {% for ex in edata %}
+            <tr>
+                <th> {{ex.exam_title}} </th>
+                {% for re in ex.exam_data %}
+                <th> Ex {{re.exercise}} [{{re.credits|floatformat:-1}}{% if config.bonus_credits %}+{{re.bonus_credits|floatformat:-1}}{% endif %}] </th>
+                {% endfor %}
+                <th> Total </th>
+            </tr>
+            <tr>
+                {% if ex.presence == None %}
+                    <td> <a href="exampresence/new/{{ ex.exam_id }}" class="nyd"> nyd  </a></td>
+                {% else %}
+                    <td> <a href="exampresence/update/{{ ex.presence.id }}"{% if ex.presence.present %} class="present"> &#10004;&#xfe0e; {% else %} class="absent"> &#10008; {% endif %}</a></td>
+                {% endif %}
+                    {% for re in ex.exam_data %}
+                      {% if re.credit_pk == None %}
+                        <td> <a href="examcredits/new/{{ ex.exam_id }}/{{ re.exercise_pk }}" class="nyd"> nyd </a> </td>
+                      {% else %}
+                      <td> <a href="examcredits/{{ re.credit_pk }}" class={% if ex.presence.present %}"present"{% else %}"nyd"{%endif%}>{% if re.credits_achieved or re.credits_achieved == 0 %} {{ re.credits_achieved|floatformat:-1 }} {% else %} None {% endif %}{% if config.bonus_credits %}+{{ re.bonus_credits_achieved|floatformat:-1 }}{% endif %}</a> </td>
+                      {% endif %}
+                    {% endfor %}
+                    <td>
+                        <b class={% if ex.presence.present %}"present"{% else %}"nyd"{%endif%}>{{ ex.total_credits_achieved|floatformat:-1 }}
+                            {% if config.bonus_credits %}
+                                +{{re.total_bonus_credits_achieved|floatformat:-1}}
+                            {% endif %}/ {{ ex.total_credits|floatformat:-1 }}
+                            {% if config.bonus_credits %}
+                                +{{re.total_bonus_credits|floatformat:-1}}
+                            {% endif %}
+                        </b>
+                    </td>
+            </tr>
+        {% endfor %}
+        </table>
+  {% endif %}
+
+  <hr>
 
   {% if rdata %}
-    <br>
+    <h2> Exercises </h2>
         <table class="w3-table-all w3-hoverable w3-card-4">
     {% for rs in rdata %}
             <tr>
                 <th>Sheet No{{ rs.sheet }} </th>
                 {% for re in rs.sheet_data %}
-                <th> Ex '{{re.exercise}}' [{{re.credits}}{% if config.bonus_credits %}+{{re.bonus_credits}}{% endif %}] </th>
+                <th> Ex {{re.exercise}} [{{re.credits|floatformat:-1}}{% if config.bonus_credits %}+{{re.bonus_credits|floatformat:-1}}{% endif %}] </th>
                 {% endfor %}
             </tr>
             <tr>
@@ -49,9 +135,10 @@
             </tr>
     {% endfor %}
         </table>
-          <p>
-              <div class="w3-right w3-padding"> <a href="{% url 'students' %}" class="mylink">back to 'My Students'</a> </div>
-          </p>
+
+        <p>
+            <div class="w3-right w3-padding"> <a href="{% url 'students' %}" class="mylink">back to 'My Students'</a> </div>
+        </p>
   {% else %}
   <p> There are no results for this student in the system. <br> </p>
   {% endif %}

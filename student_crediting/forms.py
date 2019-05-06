@@ -2,7 +2,9 @@ from django import forms
 from django.forms import ModelForm
 from django.contrib.admin.widgets import AdminDateWidget
 
-from .models import Result, Student, Exercise, Presence, Sheet
+from django.conf import settings
+
+from .models import Result, Student, Exercise, Presence, Sheet, Exam, ExamExercise, ExamPresence, ExamResult
 from django.utils import timezone
 
 class GiveCreditForm(forms.ModelForm):
@@ -10,12 +12,13 @@ class GiveCreditForm(forms.ModelForm):
   def __init__(self, *args, **kwargs):
     max_values = kwargs.pop('max_values', None)
     user = kwargs.pop('user', None)
-    config = kwargs.pop('config', None)
+    #config = kwargs.pop('config', None)
     super(GiveCreditForm, self).__init__(*args, **kwargs)
     if max_values:
       self.fields['credits'] = forms.DecimalField(min_value=0, max_value=max_values['credits'])
       self.fields['credits'].help_text = 'max. {} credits'.format(max_values['credits'])
-      if not config['bonus_credits']:
+      #if not config['bonus_credits']:
+      if not settings.BONUS_CREDITS:
         ## if we do not want to use bonus_credits, hide this input 
         self.fields['bonus_credits'].widget = forms.HiddenInput()
       else:
@@ -41,6 +44,41 @@ class GiveCreditForm(forms.ModelForm):
     fields = ('student', 'exercise', 'credits', 'bonus_credits', 'blackboard', )
 
 
+class GiveExamCreditForm(forms.ModelForm):
+  
+  def __init__(self, *args, **kwargs):
+    max_values = kwargs.pop('max_values', None)
+    user = kwargs.pop('user', None)
+    #config = kwargs.pop('config', None)
+    super(GiveExamCreditForm, self).__init__(*args, **kwargs)
+    if max_values:
+      self.fields['credits'] = forms.DecimalField(min_value=0, max_value=max_values['credits'])
+      self.fields['credits'].help_text = 'max. {} credits'.format(max_values['credits'])
+      #if not config['bonus_credits']:
+      if not settings.BONUS_CREDITS:
+        ## if we do not want to use bonus_credits, hide this input 
+        self.fields['bonus_credits'].widget = forms.HiddenInput()
+      else:
+        self.fields['bonus_credits'] = forms.DecimalField(min_value=0, max_value=max_values['bonus_credits'])
+        self.fields['bonus_credits'].help_text = 'max. {} bonus_credits'.format(max_values['bonus_credits'])
+    if 'instance' in kwargs and kwargs['instance']:
+      ## in this case we have selected a student and an exercise before, so fix both:
+      _students = Student.objects.filter(id=kwargs['instance'].student.id)
+      _examexercise = ExamExercise.objects.filter(id=kwargs['instance'].examexercise.id)
+      self.fields['student'].queryset = _students
+      self.fields['student'].initial = _students
+      self.fields['examexercise'].queryset = _examexercise
+      self.fields['examexercise'].initial = _examexercise
+    else:
+      if user:
+        _students = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=user)
+        self.fields['student'].queryset = _students
+        self.fields['student'].initial = _students
+
+
+  class Meta:
+    model = ExamResult
+    fields = ('student', 'examexercise', 'credits', 'bonus_credits', )
 
 
 class AssignPresenceForm(forms.ModelForm):
@@ -68,6 +106,31 @@ class AssignPresenceForm(forms.ModelForm):
     fields = ('student', 'sheet', 'present')
 
 
+class AssignExamPresenceForm(forms.ModelForm):
+
+  def __init__(self, *args, **kwargs):
+    user = kwargs.pop('user', None)
+    super(AssignExamPresenceForm, self).__init__(*args, **kwargs)
+    if 'instance' in kwargs and kwargs['instance']:
+      ## in this case we selected a student and exercise sheet -> fix them in the form
+      _students = Student.objects.filter(id=kwargs['instance'].student.id)
+      _exam = Exam.objects.filter(id=kwargs['instance'].exam.id)
+      self.fields['student'].queryset = _students
+      self.fields['student'].initial = _students
+      self.fields['exam'].queryset = _exam
+      self.fields['exam'].initial = _exam
+
+    else:
+      if user:
+        _students = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=user)
+        self.fields['student'].queryset = _students
+        self.fields['student'].initial = _students
+
+  class Meta:
+    model = ExamPresence
+    fields = ('student', 'exam', 'present')
+
+
 class EditStudentForm(forms.ModelForm):
   def __init__(self, *args, **kwargs):
     user = kwargs.pop('user', None)
@@ -84,7 +147,7 @@ class EditStudentFullForm(forms.ModelForm):
 
   class Meta:
     model = Student
-    fields = ('name', 'surname', 'exgroup', 'studentID','email', )
+    fields = ('name', 'surname', 'exgroup', 'studentID', 'matrikelnr' ,'email', )
 
 
 

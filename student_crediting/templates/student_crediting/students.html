@@ -2,54 +2,73 @@
 
 {% block content %}
   {% if student_list %}
-      <table class="w3-table-all w3-hoverable w3-card-4" id="students_table">
+      <table class="w3-table-all w3-hoverable w3-card-4" id="students_table" onload="numberRows('last')">
         <tr>
 		  <th>RZ ID</th>
           <th class="cursor-pointer-head" onclick="sortTable(1, numeric=false)">Name</th>
           <th class="cursor-pointer-head" onclick="sortTable(2, numeric=false)">Surname</th>
           {% if request.user.is_staff %}
             <th class="cursor-pointer-head" onclick="sortTable(3, numeric=false)">Group</th>
-            <th class="cursor-pointer-head" onclick="sortTable(4, numeric=true)">Credits</th>
+            <th class="cursor-pointer-head" onclick="sortTable(4, numeric=true, special='credits')">Exercises</th>
 		  {% else %}
-            <th class="cursor-pointer-head" onclick="sortTable(3, numeric=true)">Credits</th>
+            <th class="cursor-pointer-head" onclick="sortTable(3, numeric=true, special='credits')">Exercises</th>
 		  {% endif %}
-          <th>Credits [%]</th>
+          {% comment %} <th>Credits [%]</th> {% endcomment %} 
           {% if request.user.is_staff %}
-            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true)">Missed </th>
-		  {% else %}
             <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true)">Missed </th>
+            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='exam')">Exam</th>
+            <th class="cursor-pointer-head" onclick="sortTable(7, numeric=true, special='total')">Total</th>
+		  {% else %}
+            <th class="cursor-pointer-head" onclick="sortTable(4, numeric=true)">Missed </th>
+            <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true, special='exam')">Exam</th>
+            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='total')">Total</th>
 		  {% endif %}
+          <th class="cursor-pointer-head" onclick="numberRows('last')">#</th>
         </tr>
-      {% for student,student_mt in student_list %}
+      {% for student in student_list %}
         <tr>
             <td><a href="student/{{ student.id }}/" class="mylink">{{ student.studentID }}</a></td>
             <td>{{ student.name }}</td>
             <td>{{ student.surname }}</td>
               {% if request.user.is_staff %}
-              <td><a href="{% url 'exgroup_details' student.exgroup.number %}" class="mylink"> G{{ student.exgroup.number}}</a> ({{ student.exgroup.tutor.last_name }})</td>
+              <td><a href="{% url 'exgroup_details' student.egnumber %}" class="mylink"> G{{ student.egnumber}}</a> ({{ student.tutorlastname }})</td>
               {% endif %}
               {% if config.bonus_credits %}
-                <td>{{ student.credits_sum }}+{{ student.bonus_credits_sum }}</td> 
-                <td>{{ student.credits_sum_perc|stringformat:".1f" }}+{{ student.bonus_credits_sum_perc|stringformat:".1f" }} </td> 
+                <td>{{ student.exercise_credits_achieved }}+{{ student.exercise_bonus_credits_achieved }} (({{ student.exercise_credits_achieved_perc|stringformat:".1f" }}+{{ student.exercise_bonus_credits_achieved_perc|stringformat:".1f" }})%)</td> 
               {% else %}
-                <td>{{ student.credits_sum|floatformat:-1 }}</td> 
-                <td>{{ student.credits_sum_perc|floatformat:-1 }}</td> 
+                <td>{{ student.exercise_credits_achieved|floatformat:-1 }} ({{ student.exercise_credits_achieved_perc|floatformat:-1 }}%)</td> 
               {% endif %}
-            <td>{{ student_mt.missed_tutorials }} </td>
+              <td>{% if student.missed_tutorials %}{{ student.missed_tutorials|floatformat:-1 }} {% else %}0{% endif %}</td>
+              <td>{% if student.exam_credits_possible %}{{student.exam_credits_achieved|floatformat:-1}} / {{student.exam_credits_possible|floatformat:-1}}{%else%}-{% endif %} </td>
+            <td>{% if student.combined_credits_possible %}{{student.combined_credits|floatformat:-1}} / {{student.combined_credits_possible|floatformat:-1}}{%else%}-{% endif %} </td>
+            <td></td>
         </tr>
       {% endfor %}
       </table>
 
 <script>
+function numberRows(n=7) {
+    var rows, i = 0;
+    table = document.getElementById("students_table");
+    rows = table.rows;
+    if (n=='last') {
+        n = rows[0].cells.length - 1;
+        //console.log('last; n=', n);
+    }
+    for (i = 1; i < (rows.length); i++) {
+        rows[i].getElementsByTagName("TD")[n].innerHTML = i;
+    };
+};
+
 //function sortTable(n) {
-function sortTable(n, numeric) {
+function sortTable(n, numeric, special="") {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
   var ssw = false;
   table = document.getElementById("students_table");
   switching = true;
   //Set the proper sorting direction (default is ascending):
-  var dtag = " \u25B2";
-  var atag = " \u25BC";
+  var dtag = " \u25BC";
+  var atag = " \u25B2";
   var tab_row_name = table.rows[0].getElementsByTagName("TH")[n].innerHTML;
 //  console.log("tab_row_name = "+tab_row_name);
   if ( tab_row_name.includes(dtag) ){
@@ -58,7 +77,7 @@ function sortTable(n, numeric) {
       dir = "desc";
   } else {
 //      console.log(dtag + " and " + atag + " not in " + encodeURI(tab_row_name));
-      dir = "asc";
+      dir = "desc";
   }
 //  console.log("Launched sortTabel(n="+n+", numeric="+numeric+") -> switchcount = "+switchcount + "  - Direction = " + dir);
   /*Make a loop that will continue until
@@ -79,7 +98,7 @@ function sortTable(n, numeric) {
       y = rows[i + 1].getElementsByTagName("TD")[n];
       /*check if the two rows should switch place,
       based on the direction, asc or desc:*/
-      if (numeric) { 
+      if (numeric && special == "") { 
           if( isNaN(+x.innerHTML) || isNaN(+y.innerHTML) ){
               //var err_str = +x.innerHTML + " or " + +y.innerHTML + " is not a number <br/>";
               var err_str = "Element is not a number <br/>";
@@ -91,6 +110,25 @@ function sortTable(n, numeric) {
             ssw = (+x.innerHTML > +y.innerHTML); 
           } else {
             ssw = (+x.innerHTML < +y.innerHTML); 
+          }
+      } else if (special == "credits") {
+          var xs = +x.innerHTML.split(" ")[0];
+          var ys = +y.innerHTML.split(" ")[0];
+          if (dir == "asc") {
+              ssw = (xs > ys);
+          } else {
+              ssw = (xs < ys);
+          }
+      } else if (special == "exam" || special == "total") {
+          var xs = +x.innerHTML.split(" / ")[0];
+//          console.log(xs);
+          var ys = +y.innerHTML.split(" / ")[0];
+          if (isNaN(xs)) { xs = 0; }
+          if (isNaN(ys)) { ys = 0; }
+          if (dir == "asc") {
+              ssw = (xs > ys);
+          } else {
+              ssw = (xs < ys);
           }
       } else { 
           if (dir == "asc") {
@@ -142,6 +180,9 @@ function sortTable(n, numeric) {
   } else {
     sorted_header.innerHTML = old + dtag;
   }
+// add numbers to rows:
+  //console.log('table.rows[0].cells.length = ', table.rows[0].cells.length);
+  numberRows(n=table.rows[0].cells.length-1);
 }
 </script>
 

@@ -12,12 +12,14 @@ from django.core.mail import EmailMessage, send_mail
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
-from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm, EditSheetForm
+from .forms import GiveCreditForm, AssignPresenceForm, EditStudentForm, EditStudentFullForm, EditSheetForm, GiveExamCreditForm, AssignExamPresenceForm
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 import pytz
 
-from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config
+#from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config, Exam, ExamExercise, ExamPresence, ExamResult 
+# Remove Config class from database:
+from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Exam, ExamExercise, ExamPresence, ExamResult 
 
 from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
 from django.db.models import FloatField
@@ -62,18 +64,22 @@ def change_password(request):
                }
     return render(request, 'student_crediting/change_password.html', context)
 
+## OLD (before May 2019) config_read from Database:
+#def config_read():
+#  _conf = Config.objects.all()
+#  _config = {}
+#  for _c in _conf:
+#    _config[_c.name] = _c.state
+#  return _config
 
+## Read config from settings.py
 def config_read():
-  _conf = Config.objects.all()
-  _config = {}
-  for _c in _conf:
-    _config[_c.name] = _c.state
+  _config = {'bonus_credits': settings.BONUS_CREDITS}
   return _config
-
 
 @login_required
 def give_credit(request, credit_pk=None):
-  _config = config_read()
+  #_config = config_read()
   if credit_pk:
     instance = get_object_or_404(Result, pk=credit_pk)
     ex_credits = instance.exercise.credits
@@ -82,7 +88,8 @@ def give_credit(request, credit_pk=None):
   else:
     mvs=None
     instance=None
-  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  #form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user)
   if form.is_valid():
     student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
     if student.exgroup.tutor == request.user or request.user.is_staff:
@@ -104,6 +111,43 @@ def give_credit(request, credit_pk=None):
                'config': config_read(),
                }
     return render(request, 'student_crediting/give_credits.html', context)
+
+@login_required
+def give_examcredits(request, credit_pk=None, student_pk=None):
+  #_config = config_read()
+  if credit_pk:
+    instance = get_object_or_404(ExamResult, pk=credit_pk)
+    ex_credits = instance.examexercise.credits
+    ex_bonus_credits = instance.examexercise.bonus_credits
+    mvs={'credits':ex_credits, 'bonus_credits':ex_bonus_credits}
+  else:
+    mvs=None
+    instance=None
+  #form = GiveExamCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  form = GiveExamCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user)
+  if form.is_valid():
+    student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+      sc.edited_by = request.user
+      sc.last_modified = timezone.now()
+      sc.save()
+      ## we do not want to send mail to student when exam details are entered!
+      #send_mail_to_student(request)
+      return redirect('student_details', sc.student.id)
+    else:
+      raise PermissionDenied("Permission denied.")
+  else:
+    #messages.error(request, 'Please correct the error below.')
+
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+    return render(request, 'student_crediting/give_examcredits.html', context)
+
 
 
 @login_required
@@ -146,7 +190,7 @@ def send_mail_to_student(request):
         if res.blackboard:
           body += " (Tafel: '{}')".format(res.blackboard)
         body += "\n"
-      tutorials_missed = 2
+      #tutorials_missed = 2
       body += "\nDein aktueller Punktestand ist {:.1f}/{:.0f}. Du hast {} mal im Tutorat gefehlt.\n".format(student.total_credits_achieved, credits_possible['credits_possible'], eg['tutorials_missed'])
       nm = student.num_bbm
       no = student.num_bbo
@@ -272,30 +316,83 @@ def exercise_sheets(request):
 
 @login_required
 def students(request):
-  #sum_credits = Exercise.objects.all().aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
   if request.user.is_staff:
-      student_list = Student.objects.all()
+    tutors_list = list(User.objects.all().values_list('id', flat=True))
   else:
-    student_list = Student.objects.select_related('exgroup__tutor').filter(exgroup__tutor=request.user)
-  student_list_mt = student_list
-  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
-                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
-                                       credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
-                                       bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
-                                       #missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=True),
-                                       ).order_by('exgroup__number','surname')
-  student_list_mt = student_list_mt.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False)).order_by('exgroup__number','surname')
-
-#  student_list = student_list.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
-#                                       bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
-#                                       credits_sum_perc=100*F('credits_sum')/sum_credits['total_credits'],
-#                                       bonus_credits_sum_perc=100*F('bonus_credits_sum')/sum_credits['total_bonus_credits'],
-#                                       ).order_by('exgroup__number','surname')
+    tutors_list = [request.user.id, ]
+    ## pretend being tutor 8 (rolf schimmer) for testing purpose:
+    #tutors_list = [8,]
+  student_list = Student.objects.raw('''
+SELECT s.id
+       ,s.name
+       ,s.surname
+       ,s.exgroup_id
+       ,e.credits AS exam_credits_achieved
+       ,e.max_credits AS exam_credits_possible
+       ,r.credits AS exercise_credits_achieved
+       ,100*r.credits/%s AS exercise_credits_achieved_perc
+       ,r.bonus_credits AS exercise_bonus_credits_achieved
+       ,100*r.bonus_credits/%s AS exercise_bonus_credits_achieved_perc
+       ,28*e.credits+r.credits AS combined_credits
+       ,28*e.max_credits+%s AS combined_credits_possible
+       ,0.5*(28*e.max_credits+%s) AS combined_credits_thr
+       ,eg.first_name AS tutorfirstname
+       ,eg.last_name AS tutorlastname
+       ,eg.tutor_id AS tutorid
+       ,eg.number AS egnumber
+       ,m.missed AS missed_tutorials
+FROM student_crediting_student AS s
+LEFT OUTER JOIN (
+    SELECT er.student_id, SUM(er.credits) AS credits, SUM(expres.exexercise_credits) AS max_credits
+    FROM student_crediting_examresult AS er
+    INNER JOIN (
+        SELECT ep.student_id AS student_id, ep.present AS present, ep.exam_id AS exam_id, exexercise.id AS exexercise_id, exexercise.credits AS exexercise_credits
+        FROM student_crediting_exampresence AS ep
+        INNER JOIN (
+            SELECT id, exam_id, credits
+            FROM student_crediting_examexercise
+            GROUP BY id
+        ) exexercise ON exexercise.exam_id = ep.exam_id
+        WHERE ep.present IS True
+        ORDER BY exexercise.exam_id, exexercise.id
+    ) expres ON expres.student_id=er.student_id AND expres.exexercise_id=er.examexercise_id
+    WHERE expres.present IS True
+    GROUP BY er.student_id
+) e ON e.student_id=s.id
+LEFT OUTER JOIN (
+    SELECT student_id
+           ,SUM(credits) AS credits
+           ,SUM(bonus_credits) AS bonus_credits
+    FROM student_crediting_result
+    WHERE blackboard IS NULL OR blackboard IN ('+','o')
+    GROUP BY student_id
+) r ON r.student_id=s.id
+JOIN (
+    SELECT eg.id
+          ,eg.number
+          ,eg.tutor_id
+          ,u.first_name
+          ,u.last_name
+    FROM student_crediting_exgroup as eg
+    JOIN (
+         SELECT id, first_name, last_name
+         FROM auth_user
+    ) u on u.id=eg.tutor_id
+) eg ON eg.id=s.exgroup_id
+LEFT OUTER JOIN (
+    SELECT m.student_id
+          ,COUNT(m.present) as missed
+    FROM student_crediting_presence as m
+    WHERE m.present=FALSE
+    GROUP BY m.student_id
+) m ON m.student_id=s.id
+WHERE eg.tutor_id=ANY(%s)
+ORDER BY s.exgroup_id, s.surname;
+''', (sum_credits['total_credits'],sum_credits['total_bonus_credits'], sum_credits['total_credits'],sum_credits['total_credits'],tutors_list ))
 
   context = {#'form': form,
-             'student_list': zip(student_list,student_list_mt),
-             #'student_list_mt': student_list_mt,
+             'student_list': student_list,
              'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
@@ -306,7 +403,25 @@ def students(request):
 
 @login_required
 def student_details(request, student_pk):
+
+  sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+  #sum_examcredits = Exam.objects.all().aggregate(total_credits=Sum('examexercise__credits'), total_bonus_credits=Sum('examexercise__bonus_credits'))
+
+  num_bbp = Count('result__blackboard', filter=(Q(result__blackboard='+')))
+  num_bbo = Count('result__blackboard', filter=(Q(result__blackboard='o')))
+  num_bbm = Count('result__blackboard', filter=(Q(result__blackboard='-')))
   student = Student.objects.select_related('exgroup__tutor').get(pk=student_pk)
+  _st = Student.objects.select_related('exgroup__tutor').filter(pk=student_pk)
+
+  sd1 = _st.annotate(credits_sum=Sum('result__credits', filter=~Q(result__blackboard='-')), 
+                         bonus_credits_sum=Sum('result__bonus_credits', filter=~Q(result__blackboard='-')),
+                         credits_sum_perc=100*Sum('result__credits', filter=~Q(result__blackboard='-'))/sum_credits['total_credits'],
+                         bonus_credits_sum_perc=100*Sum('result__bonus_credits', filter=~Q(result__blackboard='-'))/sum_credits['total_bonus_credits'],
+                         )
+  sd2 = _st.annotate(missed_tutorials=Count('presence__present', filter=Q(presence__present=False), distinct=False))
+  sd3 = _st.annotate(num_bbp=num_bbp).annotate(num_bbo=num_bbo).annotate(num_bbm=num_bbm)
+  #sd4 = _st.annotate(credits_sum=Sum('examresult__credits'))
+
   exercises = Exercise.objects.select_related('sheet')
   presence = Presence.objects.filter(student=student_pk)
   sheets_meta = {}
@@ -339,7 +454,7 @@ def student_details(request, student_pk):
 
   ## step3: reorganize dict 'sheets_meta' such that django template can visualize
   rdata = []
-  for snumber in sheets_meta:
+  for snumber in sorted(sheets_meta):
     rdata.append({})
     rdata[-1]['sheet'] = snumber
     rdata[-1]['presence'] = sheets_meta[snumber]['presence']
@@ -351,10 +466,94 @@ def student_details(request, student_pk):
       rdata[-1]['sheet_data'][-1]['exercise'] = exnumber
       for md in sheets_meta[snumber][exnumber]:
         rdata[-1]['sheet_data'][-1][md] = sheets_meta[snumber][exnumber][md]
+  #############################
+  #############################
+  #### Repeat above for exams:
+  #############################
+  exex = ExamExercise.objects.select_related('exam')
+  expres = ExamPresence.objects.filter(student=student_pk)
+  exams_meta = {}
+  ## step 1: fill exam and examExercises information to dict 'exams_meta'
+  for iex, ex in enumerate(exex):
+    if not ex.exam.title in exams_meta:
+      exams_meta[ex.exam.title] = {}
+      exams_meta[ex.exam.title]['exam_id'] = ex.exam.id
+      _ispres = expres.filter(exam__title=ex.exam.title)
+      if _ispres:
+        exams_meta[ex.exam.title]['presence'] = _ispres[0]
+      else:
+        exams_meta[ex.exam.title]['presence'] = None
+    if not ex.number in exams_meta[ex.exam.title]:
+      exams_meta[ex.exam.title][ex.number] = {}
+      exams_meta[ex.exam.title][ex.number]['exercise_pk'] = ex.id
+      exams_meta[ex.exam.title][ex.number]['credits'] = ex.credits
+      exams_meta[ex.exam.title][ex.number]['bonus_credits'] = ex.bonus_credits
+      exams_meta[ex.exam.title][ex.number]['credit_pk'] = None
+      exams_meta[ex.exam.title][ex.number]['credits_achieved'] = None
+      exams_meta[ex.exam.title][ex.number]['bonus_credits_achieved'] = None
+
+  ## step2: insert student's achievements into above dict 'exams_meta'
+  student_result = ExamResult.objects.filter(student=student_pk).select_related('examexercise__exam')
+  for sr in student_result:
+    exams_meta[sr.examexercise.exam.title][sr.examexercise.number]['credits_achieved'] = sr.credits
+    exams_meta[sr.examexercise.exam.title][sr.examexercise.number]['bonus_credits_achieved'] = sr.bonus_credits
+    exams_meta[sr.examexercise.exam.title][sr.examexercise.number]['credit_pk'] = sr.id
+  
+  ## step 2.2 sum_up credits for each exam
+  for exam_title in exams_meta:
+    _sum_c = 0
+    _sum_bc = 0
+    _sum_ca = 0
+    _sum_bca = 0
+    for exnumber in exams_meta[exam_title]:
+      if exnumber == 'presence' or exnumber == 'exam_id':
+        continue
+      _sum_c += exams_meta[exam_title][exnumber]['credits']
+      _sum_bc += exams_meta[exam_title][exnumber]['bonus_credits']
+      if exams_meta[exam_title][exnumber]['credits_achieved']:
+        _sum_ca += exams_meta[exam_title][exnumber]['credits_achieved']
+      if exams_meta[exam_title][exnumber]['bonus_credits_achieved']:
+        _sum_bca += exams_meta[exam_title][exnumber]['bonus_credits_achieved']
+    exams_meta[exam_title]['total_credits'] = _sum_c
+    exams_meta[exam_title]['total_bonus_credits'] = _sum_bc
+    exams_meta[exam_title]['total_credits_achieved'] = _sum_ca
+    exams_meta[exam_title]['total_bonus_credits_achieved'] = _sum_bca
+  
+  ## step3: reorganize dict 'exams_meta' such that django template can visualize
+  edata = []
+  #print("exams_meta: ", exams_meta)
+  #for eid, etitle in enumerate(exams_meta):
+  for etitle in sorted(exams_meta):
+    edata.append({})
+    #edata[-1]['exam_id'] = eid
+    edata[-1]['exam_id'] = exams_meta[etitle]['exam_id']
+    edata[-1]['exam_title'] = etitle
+    edata[-1]['presence'] = exams_meta[etitle]['presence']
+    edata[-1]['exam_data'] = []
+    edata[-1]['total_credits'] = exams_meta[etitle]['total_credits']
+    edata[-1]['total_bonus_credits'] = exams_meta[etitle]['total_bonus_credits']
+    edata[-1]['total_credits_achieved'] = exams_meta[etitle]['total_credits_achieved']
+    edata[-1]['total_bonus_credits_achieved'] = exams_meta[etitle]['total_bonus_credits_achieved']
+    edata[-1]['summed_scaled_credits'] = 28*exams_meta[etitle]['total_credits'] + sum_credits['total_credits']
+    edata[-1]['summed_scaled_credits_thr'] = 0.5*float(edata[-1]['summed_scaled_credits'])
+    edata[-1]['summed_scaled_credits_achieved'] = 28*exams_meta[etitle]['total_credits_achieved'] + sd1[0].credits_sum
+    for exnumber in sorted(exams_meta[etitle]):
+      if exnumber in ['presence', 'exam_id', 'total_credits', 'total_bonus_credits', 'total_credits_achieved', 'total_bonus_credits_achieved', 'summed_scaled_credits', 'summed_scaled_credits_thr', 'summed_scaled_credits_achieved']:
+      #if exnumber == 'presence' or exnumber == 'exam_id':
+        continue
+      edata[-1]['exam_data'].append({})
+      edata[-1]['exam_data'][-1]['exercise'] = exnumber
+      for md in exams_meta[etitle][exnumber]:
+        edata[-1]['exam_data'][-1][md] = exams_meta[etitle][exnumber][md]
 
   context = {#'form': form,
              'student': student,
              'rdata': rdata,
+             'edata': edata,
+             'sum_credits': sum_credits,
+             'student_info_credits': sd1,
+             'student_info_presence': sd2,
+             'student_info_blackboard': sd3,
              'lecture': CURRENT_EVENT,
              'logged_user': request.user,
              'config': config_read(),
@@ -376,6 +575,24 @@ def exgroup_details(request, exgroup_pk):
   return render(request, 'student_crediting/exgroup_detail.html', context)
 
 
+@login_required
+def edit_examcredits(request, student_pk, exam_pk, exercise_pk):
+  ## generates new ExamResults object with above data and passes the pk of this object to 'give_examcredit' function
+  student = get_object_or_404(Student, id=student_pk)
+  if not (student.exgroup.tutor == request.user or request.user.is_staff):
+    raise PermissionDenied("Permission denied")
+  print ("exercise_ok: ", exercise_pk)
+  examexercise = get_object_or_404(ExamExercise, id=exercise_pk)
+  print ("student: ", student)
+  print ("examexercise: ", examexercise)
+  try:
+    #res = ExamResult.objects.filter(student=student, examexercise=examexercise)[0]
+    res = ExamResult.objects.get(student=student, examexercise=examexercise)
+  except:
+    print ("There is no ExamResult for the combination of (student, examexercise)=({},{})".format(student, examexercise))
+    res = ExamResult.objects.create(student=student, examexercise=examexercise, edited_by=request.user, credits=0, bonus_credits=0 )
+  return give_examcredits(request, credit_pk=res.id, student_pk=student_pk)
+
 
 
 @login_required
@@ -390,6 +607,20 @@ def edit_credits(request, student_pk, sheet_no, exercise_pk):
   except:
     res = Result.objects.create(student=student, exercise=exercise, edited_by=request.user, )
   return give_credit(request, credit_pk=res.id)
+
+@login_required
+def give_exampresence(request, student_pk, exam_pk):
+  student = get_object_or_404(Student, id=student_pk)
+  if not (student.exgroup.tutor == request.user or request.user.is_staff):
+    raise PermissionDenied("Permission denied")
+  exam = get_object_or_404(Exam, id=exam_pk)
+  #print ('student: ', student)
+  #print ('sheet: ', sheet)
+  try:
+    pres = ExamPresence.objects.filter(student=student, exam=exam)[0]
+  except:
+    pres = ExamPresence.objects.create(student=student, exam=exam)
+  return edit_exampresence(request, presence_pk=pres.id, student_pk=student_pk)
 
 
 @login_required
@@ -432,6 +663,34 @@ def edit_presence(request, presence_pk=None):
                }
 
     return render(request, 'student_crediting/assign_presence.html', context)
+
+
+
+@login_required
+def edit_exampresence(request, presence_pk=None, student_pk=None):
+  if presence_pk:
+    instance = get_object_or_404(ExamPresence, pk=presence_pk)
+  else:
+    instance=None
+  form = AssignExamPresenceForm(request.POST or None, instance=instance, user=request.user)
+  if form.is_valid():
+    student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
+    if student.exgroup.tutor == request.user or request.user.is_staff:
+      # only staff and assigned tutor(s) are allowed to edit
+      sc = form.save(commit=False)
+      sc.save()
+      #send_mail_to_student(request)
+      return redirect('student_details', sc.student.id)
+    else:
+      raise PermissionDenied("Permission denied.")
+  else:
+    context = {'form': form,
+               'lecture': CURRENT_EVENT,
+               'logged_user': request.user,
+               'config': config_read(),
+               }
+
+    return render(request, 'student_crediting/assign_exampresence.html', context)
 
 @login_required
 def edit_sheet(request, sheet_pk=None):
@@ -552,6 +811,132 @@ def edit_student_full(request, student_pk=None):
 #                'credit_values': credit_values,
 #                }
 #     return render(request, 'student_crediting/statistics.html', context)
+
+def bin_centers(edges):
+  _bc = []
+  _edg = []
+  for i in range(len(edges)-1):
+    _bct = (edges[i+1]+edges[i])/2
+    _bc.append(_bct)
+    _edg.append((edges[i], edges[i+1]))
+  return (np.array(_bc), _edg)
+
+@login_required
+def stats_exam_overview(request):
+  if not request.user.is_staff:
+    raise PermissionDenied("Permission denied.")
+
+
+  exams = Exam.objects.all()
+  _ex = {}
+  for exam in exams:
+    _ex[exam.pk] = {}
+    _ex[exam.pk]['title'] = exam.title
+    _ex[exam.pk]['hist'] = None
+    _ex[exam.pk]['edges'] = None
+    _mc = float(ExamExercise.objects.filter(exam=exam).aggregate(max_credits=Sum('credits'))['max_credits'])
+    _ex[exam.pk]['max_credits'] = _mc
+    exam_result_list = list(Student.objects.annotate(exam_credits_sum=Sum('examresult__credits', filter=(Q(examresult__examexercise__exam=exam)))).exclude(exam_credits_sum=0).values_list('exam_credits_sum', flat=True) )
+    try:
+      # convert values to float and remove np.nan/None values:
+      _dat = np.array(exam_result_list, dtype=np.float)
+      _dat = _dat[~np.isnan(_dat)]
+      exam_result_list = list(_dat)
+    except:
+      exam_result_list = None
+
+    _h, _edges = np.histogram(exam_result_list, bins=int(_mc/2), range=(0,_mc), density=False)
+    _ex[exam.pk]['hist'] = list(_h)
+    _bc, _edg = bin_centers(edges=_edges)
+    _ex[exam.pk]['edges'] = _edg
+    _ex[exam.pk]['bc'] = _bc
+    _ex[exam.pk]['histedges'] = zip( _ex[exam.pk]['hist'] , _ex[exam.pk]['edges'] )
+
+
+
+##################### combined credits:
+  _mult = 28 ## factor to combine results, i.e. total_credits = expercises_credits + _mult * exam_credits
+  sum_credits = Exercise.objects.filter(sheet__deadline__lt=timezone.now()).aggregate(total_credits=Sum('credits'), total_bonus_credits=Sum('bonus_credits'))
+  sl = Student.objects.raw('''
+SELECT s.id
+       ,s.name
+       ,s.surname
+       ,s.exgroup_id
+       ,e.credits AS exam_credits_achieved
+       ,e.max_credits AS exam_credits_possible
+       ,r.credits AS exercise_credits_achieved
+       ,%s*e.credits+r.credits AS combined_credits
+       ,%s*e.max_credits+%s AS combined_credits_possible
+FROM student_crediting_student AS s
+LEFT OUTER JOIN (
+--    SELECT er.student_id, SUM(er.credits) AS credits, expres.exam_id, expres.exexercise_id
+    SELECT er.student_id, SUM(er.credits) AS credits, SUM(expres.exexercise_credits) AS max_credits
+    FROM student_crediting_examresult AS er
+    INNER JOIN (
+        SELECT ep.student_id AS student_id, ep.present AS present, ep.exam_id AS exam_id, exexercise.id AS exexercise_id, exexercise.credits AS exexercise_credits
+        FROM student_crediting_exampresence AS ep
+        INNER JOIN (
+            SELECT id, exam_id, credits
+            FROM student_crediting_examexercise
+            GROUP BY id
+        ) exexercise ON exexercise.exam_id = ep.exam_id
+        WHERE ep.present IS True
+        ORDER BY exexercise.exam_id, exexercise.id
+    ) expres ON expres.student_id=er.student_id AND expres.exexercise_id=er.examexercise_id
+    WHERE expres.present IS True
+    GROUP BY er.student_id
+) e ON e.student_id=s.id
+LEFT OUTER JOIN (
+    SELECT student_id, SUM(credits) AS credits
+    FROM student_crediting_result
+    GROUP BY student_id
+) r ON r.student_id=s.id
+ORDER BY s.exgroup_id, s.surname;
+''', (_mult, _mult ,sum_credits['total_credits']))
+
+  _cc_max, _ec_max, _ec_achieved, _cc_achieved = [],[],[],[]
+  for stud in sl:
+    _cc_max.append(stud.combined_credits_possible)
+    _ec_max.append(stud.exam_credits_possible)
+    _cc_achieved.append(stud.combined_credits)
+    _ec_achieved.append(stud.exercise_credits_achieved)
+
+  _cc_max = np.array(_cc_max, dtype=np.float)
+  _ec_max = np.array(_ec_max, dtype=np.float)
+  _cc_achieved = np.array(_cc_achieved, dtype=np.float)
+  _ec_achieved = np.array(_ec_achieved, dtype=np.float)
+#  print ("_cc_achieved: ", _cc_achieved)
+  xnan = [~np.isnan(_cc_achieved)]
+  _cc_max = _cc_max[xnan]
+  _ec_max = _ec_max[xnan]
+  _cc_achieved = _cc_achieved[xnan]
+  _ec_achieved = _ec_achieved[xnan]
+  assert len(_cc_max) == len(_ec_max)
+  assert len(_ec_max) == len(_cc_achieved)
+  assert len(_ec_max) == len(_ec_achieved)
+  for exam in exams:
+    _mc = float(ExamExercise.objects.filter(exam=exam).aggregate(max_credits=Sum('credits'))['max_credits'])
+    _ht, _et = np.histogram(_cc_achieved[(_ec_max==_mc)], bins=20, range=(0, _cc_max[(_ec_max==_mc)][0]), density=False)
+    _tbc, _tedg = bin_centers(edges=_et)
+    _ex[exam.pk]['bc_tot'] = _tbc
+    _ex[exam.pk]['edges_tot'] = _tedg
+    _ex[exam.pk]['he_tot'] = zip( list(_ht) , _ex[exam.pk]['edges_tot'] )
+
+    _hexec, _eexec = np.histogram(_ec_achieved[(_ec_max==_mc)], bins=20, range=(0, float(sum_credits['total_credits'])), density=False)
+    print ("_ec_achieved[(_ec_max==_mc)] = ", _ec_achieved[(_ec_max==_mc)])
+    print ("_hexec: ", _hexec)
+    _exec_bc, _exec_edg = bin_centers(edges=_eexec)
+    _ex[exam.pk]['bc_exec'] = _exec_bc
+    _ex[exam.pk]['edges_exec'] = _exec_edg
+    _ex[exam.pk]['he_exec'] = zip( list(_hexec) , _ex[exam.pk]['edges_exec'] )
+
+  context = {
+             'lecture': CURRENT_EVENT,
+             'logged_user': request.user,
+             'exams': _ex,
+             'config': config_read(),
+             }
+  return render(request, 'student_crediting/exam_statistics_overview.html', context)
 
 
 @login_required
