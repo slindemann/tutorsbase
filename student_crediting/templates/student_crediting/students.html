@@ -16,12 +16,12 @@
           {% comment %} <th>Credits [%]</th> {% endcomment %} 
           {% if request.user.is_staff %}
             <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true)">Missed </th>
-            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='credits')">Exam</th>
-            <th class="cursor-pointer-head" onclick="sortTable(7, numeric=true, special='credits')">Total</th>
+            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='exam')">Exam</th>
+            <th class="cursor-pointer-head" onclick="sortTable(7, numeric=true, special='total')">Total</th>
 		  {% else %}
             <th class="cursor-pointer-head" onclick="sortTable(4, numeric=true)">Missed </th>
-            <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true, special='credits')">Exam</th>
-            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='credits')">Total</th>
+            <th class="cursor-pointer-head" onclick="sortTable(5, numeric=true, special='exam')">Exam</th>
+            <th class="cursor-pointer-head" onclick="sortTable(6, numeric=true, special='total')">Total</th>
 		  {% endif %}
           <th class="cursor-pointer-head" onclick="numberRows('last')">#</th>
         </tr>
@@ -67,8 +67,8 @@ function sortTable(n, numeric, special="") {
   table = document.getElementById("students_table");
   switching = true;
   //Set the proper sorting direction (default is ascending):
-  var dtag = " \u25B2";
-  var atag = " \u25BC";
+  var dtag = " \u25BC";
+  var atag = " \u25B2";
   var tab_row_name = table.rows[0].getElementsByTagName("TH")[n].innerHTML;
 //  console.log("tab_row_name = "+tab_row_name);
   if ( tab_row_name.includes(dtag) ){
@@ -77,7 +77,7 @@ function sortTable(n, numeric, special="") {
       dir = "desc";
   } else {
 //      console.log(dtag + " and " + atag + " not in " + encodeURI(tab_row_name));
-      dir = "asc";
+      dir = "desc";
   }
 //  console.log("Launched sortTabel(n="+n+", numeric="+numeric+") -> switchcount = "+switchcount + "  - Direction = " + dir);
   /*Make a loop that will continue until
@@ -114,6 +114,17 @@ function sortTable(n, numeric, special="") {
       } else if (special == "credits") {
           var xs = +x.innerHTML.split(" ")[0];
           var ys = +y.innerHTML.split(" ")[0];
+          if (dir == "asc") {
+              ssw = (xs > ys);
+          } else {
+              ssw = (xs < ys);
+          }
+      } else if (special == "exam" || special == "total") {
+          var xs = +x.innerHTML.split(" / ")[0];
+//          console.log(xs);
+          var ys = +y.innerHTML.split(" / ")[0];
+          if (isNaN(xs)) { xs = 0; }
+          if (isNaN(ys)) { ys = 0; }
           if (dir == "asc") {
               ssw = (xs > ys);
           } else {
