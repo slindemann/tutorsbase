@@ -3,13 +3,16 @@ from django.urls import path
 from django.conf.urls import url, include
 from django.contrib.auth import views as auth_views
 
+from django.conf import settings
+
 from . import views
 from student_crediting import views as student_crediting_views
 
 
 #extra_context = {'lecture': 'Experimental Physics I', 'logged_user': 'not logged in' }
 #extra_context = {'logged_user': 'Experimental Physics I', }
-extra_context = {'lecture': 'Experimental Physics I', }
+#extra_context = {'lecture': 'Experimental Physics I', }
+extra_context = {'lecture': settings.CURRENT_EVENT, }
 
 
 
