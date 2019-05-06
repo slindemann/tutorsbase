@@ -208,7 +208,10 @@ class EditSheetForm(forms.Form):
       self.fields['create_exercises'].widget = forms.HiddenInput()
     else:
       self.fields['deadline_time'].initial = '10:15:00'
-      self.fields['number'].initial = list(Sheet.objects.all().order_by('number').values_list('number', flat=True))[-1]+1
+      try:
+        self.fields['number'].initial = list(Sheet.objects.all().order_by('number').values_list('number', flat=True))[-1]+1
+      except IndexError:
+        self.fields['number'].initial = 1
       self.fields['number'].disabled = False
       self.fields['deadline_day'].initial = timezone.localtime()
       self.fields['link_sheet'].initial = ''
