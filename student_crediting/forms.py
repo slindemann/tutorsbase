@@ -188,7 +188,7 @@ class EditSheetForm(forms.Form):
   deadline_time = forms.TimeField(required=True, label="Time")
   link_sheet = forms.CharField(required=False, label='Link to Sheet')
   link_solution = forms.CharField(required=False, label='Link to Solution')
-  create_exercises = forms.BooleanField(required=False, help_text="Automatically create 4 Exercises, 10 credits each")
+  create_exercises = forms.BooleanField(required=False, help_text="Automatically create {} Exercises, {} credits each".format(settings.DEF_NUM_EXERCISES, settings.DEF_NUM_CREDITS))
 
   def __init__(self, *args, **kwargs):
     self.instance = kwargs.pop('instance', None)

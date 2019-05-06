@@ -715,10 +715,12 @@ def edit_sheet(request, sheet_pk=None):
     _dl = pytz.timezone("Europe/Berlin").localize(naive, is_dst=None)
     sheet.deadline = _dl
     sheet.save()
-    if request.POST['create_exercises']:
+    #if request.POST['create_exercises']:
+    if 'create_exercises' in request.POST and request.POST['create_exercises']:
+    #if request.POST['create_exercises']:
       #print ("creating exercises...")
-      for exid in (1,2,3,4):
-        _ex = Exercise(number=exid, sheet=sheet, credits=10, bonus_credits=0)
+      for exid in range(1, settings.DEF_NUM_EXERCISES+1):
+        _ex = Exercise(number=exid, sheet=sheet, credits=settings.DEF_NUM_CREDITS, bonus_credits=0)
         _ex.save()
     return redirect('exercise_sheets')
   else:
