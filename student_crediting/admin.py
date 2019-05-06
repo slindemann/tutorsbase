@@ -2,7 +2,9 @@ from django.contrib import admin
 #from django.shortcuts import redirect
 from django.urls import reverse
 
-from .models import ExGroup, Student, Sheet, Exercise, Result, Presence, Config, Exam, ExamExercise, ExamResult, ExamPresence
+#from .models import ExGroup, Student, Sheet, Exercise, Result, Presence, Config, Exam, ExamExercise, ExamResult, ExamPresence
+# Remove Config from database
+from .models import ExGroup, Student, Sheet, Exercise, Result, Presence, Exam, ExamExercise, ExamResult, ExamPresence
 
 
 #print (reverse('students'))
@@ -17,7 +19,7 @@ admin.site.register(Sheet)
 admin.site.register(Exercise)
 admin.site.register(Result)
 admin.site.register(Presence)
-admin.site.register(Config)
+#admin.site.register(Config)
 #
 admin.site.register(Exam)
 admin.site.register(ExamExercise)

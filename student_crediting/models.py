@@ -1,15 +1,15 @@
 from django.db import models
 from django.utils import timezone
 
-
-class Config(models.Model):
-  name = models.CharField(max_length=15, help_text="name of config parameter", unique=True)
-  state = models.IntegerField(help_text='state of config parameter')
-  description = models.CharField(max_length=127, help_text='description of config parameter and its states')
-
-  def __str__(self):
-    #return "(ID{}) {}: {} ({}) ".format(self.pk, self.name, self.state, self.description)
-    return "[ID{} {}: {} ({})] ".format(self.pk, self.name, self.state, self.description)
+# CLASS REMOVED AND CONFIG MOVED TO SETTINGS.py
+#class Config(models.Model):
+#  name = models.CharField(max_length=15, help_text="name of config parameter", unique=True)
+#  state = models.IntegerField(help_text='state of config parameter')
+#  description = models.CharField(max_length=127, help_text='description of config parameter and its states')
+#
+#  def __str__(self):
+#    #return "(ID{}) {}: {} ({}) ".format(self.pk, self.name, self.state, self.description)
+#    return "[ID{} {}: {} ({})] ".format(self.pk, self.name, self.state, self.description)
 
 
 class ExGroup(models.Model):

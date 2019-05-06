@@ -17,7 +17,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 import pytz
 
-from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config, Exam, ExamExercise, ExamPresence, ExamResult 
+#from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Config, Exam, ExamExercise, ExamPresence, ExamResult 
+# Remove Config class from database:
+from .models import Student, Exercise, ExGroup, Sheet, Result, Presence, Exam, ExamExercise, ExamPresence, ExamResult 
 
 from django.db.models import Avg, Count, Min, Sum, F, Q, StdDev
 from django.db.models import FloatField
@@ -62,18 +64,22 @@ def change_password(request):
                }
     return render(request, 'student_crediting/change_password.html', context)
 
+## OLD (before May 2019) config_read from Database:
+#def config_read():
+#  _conf = Config.objects.all()
+#  _config = {}
+#  for _c in _conf:
+#    _config[_c.name] = _c.state
+#  return _config
 
+## Read config from settings.py
 def config_read():
-  _conf = Config.objects.all()
-  _config = {}
-  for _c in _conf:
-    _config[_c.name] = _c.state
+  _config = {'bonus_credits': settings.BONUS_CREDITS}
   return _config
-
 
 @login_required
 def give_credit(request, credit_pk=None):
-  _config = config_read()
+  #_config = config_read()
   if credit_pk:
     instance = get_object_or_404(Result, pk=credit_pk)
     ex_credits = instance.exercise.credits
@@ -82,7 +88,8 @@ def give_credit(request, credit_pk=None):
   else:
     mvs=None
     instance=None
-  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  #form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  form = GiveCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user)
   if form.is_valid():
     student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
     if student.exgroup.tutor == request.user or request.user.is_staff:
@@ -107,7 +114,7 @@ def give_credit(request, credit_pk=None):
 
 @login_required
 def give_examcredits(request, credit_pk=None, student_pk=None):
-  _config = config_read()
+  #_config = config_read()
   if credit_pk:
     instance = get_object_or_404(ExamResult, pk=credit_pk)
     ex_credits = instance.examexercise.credits
@@ -116,7 +123,8 @@ def give_examcredits(request, credit_pk=None, student_pk=None):
   else:
     mvs=None
     instance=None
-  form = GiveExamCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  #form = GiveExamCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user, config=_config)
+  form = GiveExamCreditForm(request.POST or None, max_values=mvs, instance=instance, user=request.user)
   if form.is_valid():
     student = Student.objects.select_related('exgroup__tutor').get(id=request.POST['student'])
     if student.exgroup.tutor == request.user or request.user.is_staff:
