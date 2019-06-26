@@ -168,7 +168,7 @@ class ExamResult(ResultBase):
 #    exam = models.ForeignKey(Exam, on_delete=models.PROTECT)
     examexercise = models.ForeignKey(ExamExercise, on_delete=models.PROTECT)
     def __str__(self):
-        return "[ID{} {} ; {} :  {}+{} credits]".format(self.pk, self.exam, self.student, self.credits, self.bonus_credits)
+        return "[ID{} {} ; {} :  {}+{} credits]".format(self.pk, self.examexercise, self.student, self.credits, self.bonus_credits)
     class Meta(ResultBase.Meta):
       unique_together = ('student', 'examexercise',)
 
